@@ -39,17 +39,46 @@ pip install spatialbench
 
 ### Running an Evaluation
 
+**Using mini-swe-agent (Recommended)**
+
+SpatialBench includes built-in support for [mini-swe-agent](https://github.com/anthropics/mini-swe-agent):
+
+```bash
+# Install spatialbench with mini-swe-agent
+pip install spatialbench
+
+# Configure your model
+export MSWEA_MODEL_NAME=claude-3-5-sonnet-20241022
+export ANTHROPIC_API_KEY=your_api_key
+
+# Run an evaluation
+spatialbench run evals/qc/seeker_qc_basic.json --agent minisweagent
+```
+
+Or programmatically:
+
+```python
+from spatialbench import EvalRunner, run_minisweagent_task
+
+runner = EvalRunner("evals/qc/seeker_qc_basic.json")
+result = runner.run(agent_function=run_minisweagent_task)
+
+print(f"Passed: {result['passed']}")
+```
+
+**Using a custom agent**
+
 ```python
 from spatialbench import EvalRunner
 
 def my_agent(task_prompt, work_dir):
     import json
-    answer = {"num_clusters": 6}
+    answer = {"mean_genes_per_bead": 45.2}
     answer_file = work_dir / "eval_answer.json"
     answer_file.write_text(json.dumps(answer))
     return answer
 
-runner = EvalRunner("evals/clustering/atlasxomics_leiden.json")
+runner = EvalRunner("evals/qc/seeker_qc_basic.json")
 result = runner.run(agent_function=my_agent)
 
 print(f"Passed: {result['passed']}")

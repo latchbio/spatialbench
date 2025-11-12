@@ -1,48 +1,65 @@
-# Adding Evaluations to SpatialBench
+# Understanding SpatialBench Evaluations
 
-This guide walks you through adding a new evaluation to SpatialBench step by step.
+This guide explains how SpatialBench evaluations are structured and how they work. The 7 example evaluations in this repository are fixed to demonstrate the format. To contribute to the full 98-evaluation benchmark, contact [kenny@latch.bio](mailto:kenny@latch.bio).
 
-## Quick Checklist
+## Example Evaluation Structure
 
-- [ ] Choose a task from real-world analysis workflows
-- [ ] Establish reproducible ground truth
-- [ ] Select appropriate grader(s)
-- [ ] Write eval JSON with clear task description
-- [ ] Test locally
-- [ ] Document in evals/README.md
-- [ ] Submit PR
+The 7 evaluations in this repository demonstrate:
+
+- [ ] Tasks from real-world analysis workflows
+- [ ] Reproducible ground truth
+- [ ] Appropriate grader selection
+- [ ] Clear task descriptions with specified output format
+- [ ] Local testing procedures
+- [ ] Comprehensive documentation
+
+## Full Benchmark Information
+
+The complete SpatialBench comprises **98 evaluations** across four platforms:
+
+| Technology       | Evaluations |
+|------------------|-------------|
+| Xenium           | 30          |
+| Vizgen (MERFISH) | 31          |
+| AtlasXomics      | 25          |
+| Seeker/Curio     | 12          |
+| **Total**        | **98**      |
+
+This repository contains **7 representative examples** to demonstrate the evaluation format and grading system. To contribute to the full benchmark, contact [kenny@latch.bio](mailto:kenny@latch.bio).
 
 ## Detailed Walkthrough
 
-### Step 1: Choose Your Task
+### Step 1: Task Selection
 
-Good evaluation tasks:
+Good evaluation tasks in SpatialBench:
 - Represent real analysis workflows
 - Have clear, objective ground truth
 - Test specific agent capabilities
-- Vary in difficulty
+- Span diverse difficulty levels
 
-Examples:
-- **Easy**: Calculate mean gene count per cell
-- **Medium**: Perform Leiden clustering with reasonable resolution
-- **Hard**: Identify rare cell populations using multiple markers
+Examples from the benchmark:
+- Calculate mean gene count per cell (QC metrics)
+- Perform Leiden clustering with specific parameters
+- Identify cell populations using marker genes
 
-### Step 2: Prepare Your Dataset
+### Step 2: Dataset Requirements
 
-Ensure your dataset:
-- Is in standard format (.h5ad for most cases)
-- Has necessary metadata (cell types, clusters, spatial coords)
-- Is properly preprocessed (or evaluation tests preprocessing)
-- Is hosted in accessible cloud storage
+SpatialBench datasets:
+- Are in standard format (.h5ad for most cases)
+- Have necessary metadata (cell types, clusters, spatial coords)
+- Are properly preprocessed (or evaluations test preprocessing)
+- Are hosted in cloud storage with latch:// URIs
 
-Upload to Latch:
-```bash
-latch cp local_data.h5ad latch://account/path/to/data.h5ad
+Example data node:
+```json
+{
+  "data_node": "latch://38438.account/xenium_kidney.h5ad"
+}
 ```
 
-### Step 3: Establish Ground Truth
+### Step 3: Ground Truth Methodology
 
-Run the analysis manually using standard tools:
+Ground truth is established by running analyses with standard tools:
 
 ```python
 import scanpy as sc
@@ -114,9 +131,9 @@ Key elements:
 - Constraints (AMI < 0.3)
 - Exact output format with field names and types
 
-### Step 6: Write Eval JSON
+### Step 6: Evaluation JSON Format
 
-Create your evaluation file:
+Example evaluation file structure:
 
 ```json
 {
@@ -190,67 +207,39 @@ result = runner.run(agent_function=wrong_agent)
 assert not result['passed'], "Grader should fail with wrong answer!"
 ```
 
-### Step 8: Document
+### Step 8: Documentation Format
 
-Add to `evals/README.md`:
+Each evaluation in `evals/README.md` is documented with:
 
 ```markdown
-#### platform_task_description_v1
+#### platform_task_description
 
-**Category**: QC/Preprocessing/Clustering/Cell Typing/DE/Spatial
-**Platform**: Xenium/AtlasXomics/Vizgen/Seeker
+**Platform**: Xenium/Vizgen/Seeker
 **Grader**: grader_name
-**Difficulty**: ⭐ Easy | ⭐⭐ Medium | ⭐⭐⭐ Hard
 
 Description of what this eval tests and why it's important.
 
-**Key Features**:
-- Tests X capability
-- Requires Y knowledge
-- Validates Z
+**Key Metrics**: field1, field2, field3
 
-**Reference**: [Paper/Protocol if applicable]
+**Platform Notes**: Specific considerations for this platform
+
+**Challenges**: What makes this task difficult
 ```
 
-### Step 9: Submit Pull Request
+### Step 9: Contributing to the Full Benchmark
 
-Use this PR template:
+To contribute new evaluations to the full 98-evaluation benchmark:
 
-```markdown
-## New Evaluation: [Eval ID]
+1. **Review the 7 examples** in this repository to understand format and quality standards
+2. **Contact [kenny@latch.bio](mailto:kenny@latch.bio)** with your proposal
+3. **Provide**:
+   - Task description and rationale
+   - Ground truth establishment method
+   - Dataset information
+   - Grader configuration
+   - Validation of reproducibility
 
-**Category**: [QC/Preprocessing/etc.]
-**Platform**: [Xenium/AtlasXomics/etc.]
-**Difficulty**: [Easy/Medium/Hard]
-
-### Description
-
-Brief description of what this evaluation tests.
-
-### Ground Truth
-
-How was ground truth established?
-- Tool: scanpy 1.9.1
-- Method: Standard preprocessing pipeline
-- Parameters: [list key parameters]
-- Reference: [paper/protocol link if applicable]
-
-### Testing
-
-- [x] Eval passes with correct answer
-- [x] Eval fails with incorrect answer
-- [x] Task description is clear and unambiguous
-- [x] Ground truth is reproducible
-
-### Files Changed
-
-- `evals/category/eval_id.json` - New evaluation
-- `evals/README.md` - Documentation
-
-### Additional Notes
-
-[Any special notes, edge cases, or considerations]
-```
+The full benchmark is maintained separately to prevent overfitting and ensure performance metrics reflect genuine spatial biology reasoning capabilities.
 
 ## Common Pitfalls
 
@@ -336,19 +325,21 @@ Some evals need multiple criteria:
 6. **Real-world relevance**: Does this test actual analysis skills?
 7. **Reproducibility**: Can someone else verify your ground truth?
 
-## Examples to Learn From
+## Example Evaluations to Study
 
-Study these well-designed evals:
+The 7 representative evaluations in this repository:
 
-- **Simple numeric**: `evals/qc/xenium_qc_basic.json`
-- **Label set**: `evals/cell_typing/xenium_kidney_typing.json`
-- **Multi-field**: `evals/preprocessing/xenium_normalization.json`
-- **Complex**: `evals/clustering/atlasxomics_leiden.json`
+- **QC metrics**: `evals/qc/seeker_qc_basic.json`
+- **Preprocessing**: `evals/preprocessing/xenium_normalization.json`
+- **Clustering**: `evals/clustering/xenium_leiden.json`
+- **Cell typing**: `evals/cell_typing/xenium_kidney_typing.json`
+- **Differential expression**: `evals/differential_expression/vizgen_de_temporal.json`
+- **Spatial analysis**: `evals/spatial_analysis/seeker_spatial_contiguity.json`, `evals/spatial_analysis/vizgen_tissue_composition.json`
 
-## Need Help?
+## Additional Resources
 
-- Check existing evals for examples
-- Read [specification.md](specification.md) for format details
-- Read [graders.md](graders.md) for grader options
-- Open an issue for questions
-- Ask in discussions for design feedback
+- Study the 7 example evaluations for format and structure
+- Read [specification.md](specification.md) for technical format details
+- Read [graders.md](graders.md) for available grader types
+- See [BENCHMARK_SCOPE.md](../BENCHMARK_SCOPE.md) for full benchmark information
+- Contact [kenny@latch.bio](mailto:kenny@latch.bio) to contribute to the full benchmark

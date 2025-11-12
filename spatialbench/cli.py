@@ -2,7 +2,8 @@ import click
 import json
 from pathlib import Path
 
-from spatialbench import EvalRunner
+from spatialbench import EvalRunner, TestCase
+from spatialbench.harness import run_minisweagent_task, batch_download_datasets
 
 @click.group()
 @click.version_option(version="0.1.0")
@@ -13,30 +14,48 @@ def main():
 @click.argument("eval_path", type=click.Path(exists=True))
 @click.option("--keep-workspace", is_flag=True, help="Keep the workspace directory after completion")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
-def run(eval_path, keep_workspace, verbose):
+@click.option("--agent", type=click.Choice(["minisweagent"]), default=None, help="Agent to use for evaluation")
+@click.option("--model", default=None, help="Model name for mini-swe-agent (defaults to MSWEA_MODEL_NAME env var)")
+def run(eval_path, keep_workspace, verbose, agent, model):
     click.echo(f"Running evaluation: {eval_path}")
 
     runner = EvalRunner(eval_path, keep_workspace=keep_workspace)
 
-    click.echo("\nNote: No agent function provided.")
-    click.echo("To integrate with your agent:")
-    click.echo("  1. Use EvalRunner programmatically in Python")
-    click.echo("  2. Pass agent_function that writes eval_answer.json")
-    click.echo("\nExample:")
-    click.echo("  from spatialbench import EvalRunner")
-    click.echo("  runner = EvalRunner(eval_path)")
-    click.echo("  runner.run(agent_function=my_agent)")
+    if agent == "minisweagent":
+        click.echo(f"Using mini-swe-agent{f' with model: {model}' if model else ''}")
 
-    result = runner.run()
+        def agent_fn(task_prompt, work_dir):
+            return run_minisweagent_task(task_prompt, work_dir, model_name=model)
+
+        result = runner.run(agent_function=agent_fn)
+
+        if result.get("passed"):
+            click.echo("\n✓ Evaluation PASSED")
+        else:
+            click.echo("\n✗ Evaluation FAILED")
+    else:
+        click.echo("\nNote: No agent specified.")
+        click.echo("To integrate with your agent:")
+        click.echo("  1. Use EvalRunner programmatically in Python")
+        click.echo("  2. Pass agent_function that writes eval_answer.json")
+        click.echo("\nExample:")
+        click.echo("  from spatialbench import EvalRunner")
+        click.echo("  runner = EvalRunner(eval_path)")
+        click.echo("  runner.run(agent_function=my_agent)")
+        click.echo("\nOr use mini-swe-agent:")
+        click.echo("  spatialbench run evals/qc/seeker_qc_basic.json --agent minisweagent")
+
+        result = runner.run()
 
 @main.command()
 @click.argument("eval_dir", type=click.Path(exists=True))
-@click.option("--model", default="default", help="Model name for results tracking")
+@click.option("--agent", type=click.Choice(["minisweagent"]), default=None, help="Agent to use for evaluation")
+@click.option("--model", default=None, help="Model name for agent")
 @click.option("--output", "-o", type=click.Path(), help="Output directory for results")
 @click.option("--parallel", "-p", type=int, default=1, help="Number of parallel workers")
-def batch(eval_dir, model, output, parallel):
+@click.option("--keep-workspace", is_flag=True, help="Keep workspace after each eval")
+def batch(eval_dir, agent, model, output, parallel, keep_workspace):
     click.echo(f"Running batch evaluations from: {eval_dir}")
-    click.echo(f"Model: {model}")
 
     if parallel > 1:
         click.echo(f"Parallel execution ({parallel} workers) not yet implemented")
@@ -51,8 +70,90 @@ def batch(eval_dir, model, output, parallel):
         click.echo("No evaluation files found!")
         return
 
-    click.echo("\nNote: Batch execution requires agent integration.")
-    click.echo("This CLI provides the framework - integrate your agent to run evaluations.")
+    if not agent:
+        click.echo("\nNote: No agent specified. Use --agent minisweagent to run evaluations.")
+        return
+
+    click.echo("\n" + "=" * 80)
+    click.echo("STEP 1: Collecting datasets from all evaluations")
+    click.echo("=" * 80)
+
+    all_uris = set()
+    for eval_file in eval_files:
+        try:
+            eval_data = json.loads(eval_file.read_text())
+            test_case = TestCase(**eval_data)
+            if test_case.data_node:
+                if isinstance(test_case.data_node, list):
+                    all_uris.update(test_case.data_node)
+                else:
+                    all_uris.add(test_case.data_node)
+        except Exception as e:
+            click.echo(f"Warning: Failed to parse {eval_file}: {e}")
+
+    click.echo(f"Found {len(all_uris)} unique dataset(s) to download")
+
+    if all_uris:
+        click.echo("\n" + "=" * 80)
+        click.echo("STEP 2: Batch downloading datasets")
+        click.echo("=" * 80)
+        batch_download_datasets(list(all_uris))
+
+    click.echo("\n" + "=" * 80)
+    click.echo("STEP 3: Running evaluations")
+    click.echo("=" * 80)
+
+    if agent == "minisweagent":
+        def agent_fn(task_prompt, work_dir):
+            return run_minisweagent_task(task_prompt, work_dir, model_name=model)
+    else:
+        agent_fn = None
+
+    results = []
+    for i, eval_file in enumerate(eval_files, 1):
+        click.echo(f"\n[{i}/{len(eval_files)}] Running: {eval_file.name}")
+        click.echo("-" * 80)
+
+        try:
+            runner = EvalRunner(eval_file, keep_workspace=keep_workspace)
+            result = runner.run(agent_function=agent_fn)
+            results.append({
+                "eval": eval_file.name,
+                "passed": result.get("passed"),
+                "test_id": result.get("test_id"),
+            })
+
+            status = "✓ PASSED" if result.get("passed") else "✗ FAILED"
+            click.echo(f"Result: {status}")
+
+        except Exception as e:
+            click.echo(f"✗ ERROR: {e}")
+            results.append({
+                "eval": eval_file.name,
+                "passed": False,
+                "error": str(e),
+            })
+
+    click.echo("\n" + "=" * 80)
+    click.echo("BATCH RESULTS")
+    click.echo("=" * 80)
+
+    passed = sum(1 for r in results if r.get("passed") is True)
+    failed = sum(1 for r in results if r.get("passed") is False)
+    errors = sum(1 for r in results if "error" in r)
+
+    click.echo(f"Total: {len(results)} evaluations")
+    click.echo(f"Passed: {passed} ({passed/len(results)*100:.1f}%)")
+    click.echo(f"Failed: {failed} ({failed/len(results)*100:.1f}%)")
+    if errors:
+        click.echo(f"Errors: {errors}")
+
+    if output:
+        output_path = Path(output)
+        output_path.mkdir(parents=True, exist_ok=True)
+        results_file = output_path / "batch_results.json"
+        results_file.write_text(json.dumps(results, indent=2))
+        click.echo(f"\nResults saved to: {results_file}")
 
 @main.command()
 @click.argument("results_dir", type=click.Path(exists=True))
