@@ -2,16 +2,32 @@
 
 **A benchmark for evaluating AI agents on spatial biology analysis tasks**
 
-SpatialBench is a comprehensive evaluation framework designed to test the capabilities of Large Language Models (LLMs) and AI agents on real-world spatial transcriptomics and epigenomics analysis workflows. The benchmark includes evaluations across multiple platforms (Xenium, AtlasXomics ATAC-seq, Vizgen MERFISH, Curio Seeker) and covers key analysis tasks from quality control to differential expression.
+SpatialBench is a comprehensive evaluation framework designed to test the capabilities of Large Language Models (LLMs) and AI agents on real-world spatial transcriptomics and epigenomics analysis workflows. The full benchmark comprises **98 evaluations** across multiple platforms (Xenium, Vizgen MERFISH, AtlasXomics ATAC-seq, Curio Seeker) and covers key analysis tasks from quality control to differential expression.
+
+**This repository contains 7 representative examples** from the full benchmark to demonstrate the evaluation format and grading system. The complete benchmark is withheld to prevent overfitting and ensure reliable model comparisons.
 
 ## Overview
 
-SpatialBench provides:
+### Full Benchmark Scale
+
+| Technology       | Evaluations |
+|------------------|-------------|
+| Xenium           | 30          |
+| Vizgen (MERFISH) | 31          |
+| AtlasXomics      | 25          |
+| Seeker/Curio     | 12          |
+| **Total**        | **98**      |
+
+### This Repository
+
+This repository contains **7 example evaluations** that demonstrate:
 - **Standardized evaluation format**: JSON-based test cases with clear task specifications
 - **Extensible grading system**: Multiple grader types for different evaluation criteria
-- **Platform coverage**: Evals for RNA (Xenium, MERFISH, Seeker) and ATAC-seq (AtlasXomics)
-- **Task diversity**: QC, preprocessing, clustering, cell typing, differential expression, and spatial analysis
+- **Platform coverage**: Examples from RNA (Xenium, MERFISH, Seeker) and ATAC-seq platforms
+- **Task diversity**: Samples across QC, preprocessing, clustering, cell typing, differential expression, and spatial analysis
 - **Framework-agnostic**: Works with any agent that can write JSON outputs
+
+The full 98-evaluation benchmark is withheld to prevent overfitting and ensure that performance metrics reflect genuine spatial biology reasoning capabilities rather than memorization.
 
 ## Quick Start
 
@@ -39,12 +55,14 @@ result = runner.run(agent_function=my_agent)
 print(f"Passed: {result['passed']}")
 ```
 
-## Evaluation Categories
+## Task Categories
+
+The full benchmark spans six major categories of spatial biology analysis. This repository includes one representative example from each:
 
 ### Quality Control (QC)
 Assess basic dataset properties: gene counts, UMI counts, mitochondrial fraction, etc.
 
-**Example**: `evals/qc/xenium_qc_basic.json`
+**Example**: `evals/qc/seeker_qc_basic.json`
 
 ### Preprocessing
 Test normalization, dimensionality reduction, and batch correction pipelines.
@@ -54,7 +72,7 @@ Test normalization, dimensionality reduction, and batch correction pipelines.
 ### Clustering
 Evaluate clustering algorithm application and parameter selection.
 
-**Example**: `evals/clustering/atlasxomics_leiden.json`
+**Example**: `evals/clustering/xenium_leiden.json`
 
 ### Cell Type Annotation
 Test marker-based cell type assignment and biological reasoning.
@@ -64,12 +82,12 @@ Test marker-based cell type assignment and biological reasoning.
 ### Differential Expression
 Assess statistical testing and marker gene discovery.
 
-**Example**: `evals/differential_expression/atlasxomics_de_markers.json`
+**Example**: `evals/differential_expression/vizgen_de_temporal.json`
 
 ### Spatial Analysis
-Evaluate spatial-specific analyses like tissue composition and cell-cell interactions.
+Evaluate spatial-specific analyses like tissue composition and spatial contiguity.
 
-**Example**: `evals/spatial_analysis/vizgen_tissue_composition.json`
+**Examples**: `evals/spatial_analysis/seeker_spatial_contiguity.json`, `evals/spatial_analysis/vizgen_tissue_composition.json`
 
 ## Grader System
 

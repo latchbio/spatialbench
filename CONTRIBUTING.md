@@ -1,15 +1,30 @@
 # Contributing to SpatialBench
 
-Thank you for your interest in contributing to SpatialBench! This document provides guidelines for adding new evaluations, creating custom graders, and submitting benchmark results.
+Thank you for your interest in contributing to SpatialBench! This document provides guidelines for creating custom graders and submitting benchmark results.
+
+**Note**: This repository contains example evaluations only. The full 98-evaluation benchmark is maintained separately to prevent overfitting. Contact [kenny@latch.bio](mailto:kenny@latch.bio) for information about contributing to the full benchmark.
 
 ## Table of Contents
 
-1. [Adding a New Evaluation](#adding-a-new-evaluation)
-2. [Creating a Custom Grader](#creating-a-custom-grader)
-3. [Submitting Benchmark Results](#submitting-benchmark-results)
-4. [Code Style](#code-style)
+1. [Creating a Custom Grader](#creating-a-custom-grader)
+2. [Submitting Benchmark Results](#submitting-benchmark-results)
+3. [Code Style](#code-style)
 
-## Adding a New Evaluation
+## Full Benchmark Information
+
+The complete SpatialBench comprises **98 evaluations** across four platforms:
+
+| Technology       | Evaluations |
+|------------------|-------------|
+| Xenium           | 30          |
+| Vizgen (MERFISH) | 31          |
+| AtlasXomics      | 25          |
+| Seeker/Curio     | 12          |
+| **Total**        | **98**      |
+
+This repository contains 7 representative examples. The full benchmark is withheld to ensure performance metrics reflect genuine spatial biology capabilities.
+
+## Creating a Custom Grader
 
 ### Prerequisites
 

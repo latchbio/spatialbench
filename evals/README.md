@@ -1,17 +1,27 @@
-# SpatialBench Evaluation Catalog
+# SpatialBench Example Evaluations
 
-This catalog lists all evaluations in SpatialBench, organized by analysis category.
+This catalog describes the example evaluations included in this repository. These represent samples across the major task categories from the full SpatialBench benchmark.
 
-## Overview
+## Full Benchmark Scale
 
-- **Total Evaluations**: 7 (example set)
+The complete SpatialBench benchmark comprises **98 evaluations**:
+
+| Technology       | Evaluations |
+|------------------|-------------|
+| Xenium           | 30          |
+| Vizgen (MERFISH) | 31          |
+| AtlasXomics      | 25          |
+| Seeker/Curio     | 12          |
+| **Total**        | **98**      |
+
+## Example Evaluations (This Repository)
+
+This repository contains **7 representative examples** across the major task categories:
+
 - **Platforms**: Xenium (10x), Vizgen (MERFISH), Curio Seeker
 - **Categories**: QC, Preprocessing, Clustering, Cell Typing, Differential Expression, Spatial Analysis
 
-**Difficulty Scale**:
-- ⭐ **Easy**: Basic calculations, standard methods
-- ⭐⭐ **Medium**: Multi-step analysis, parameter selection
-- ⭐⭐⭐ **Hard**: Complex reasoning, multiple constraints
+**Note**: The full benchmark is withheld to prevent overfitting. These examples demonstrate the evaluation format, grading system, and task diversity without compromising benchmark integrity.
 
 ---
 
@@ -21,7 +31,6 @@ This catalog lists all evaluations in SpatialBench, organized by analysis catego
 
 **Platform**: Curio Seeker
 **Grader**: NumericToleranceGrader
-**Difficulty**: ⭐ Easy
 
 Calculate basic QC metrics for Curio Seeker spatial transcriptomics data. Seeker uses bead-based capture (not cells), so terminology differs from cell-based platforms.
 
@@ -42,7 +51,6 @@ Calculate basic QC metrics for Curio Seeker spatial transcriptomics data. Seeker
 
 **Platform**: Xenium (10x)
 **Grader**: NumericToleranceGrader
-**Difficulty**: ⭐ Easy
 
 Apply total count normalization and log transformation to spatial data.
 
@@ -63,7 +71,6 @@ Apply total count normalization and log transformation to spatial data.
 
 **Platform**: Xenium (10x)
 **Grader**: NumericToleranceGrader
-**Difficulty**: ⭐⭐ Medium
 
 Perform Leiden clustering on batch-corrected PCA embeddings from Xenium kidney data.
 
@@ -88,7 +95,6 @@ Perform Leiden clustering on batch-corrected PCA embeddings from Xenium kidney d
 
 **Platform**: Xenium (10x)
 **Grader**: LabelSetJaccardGrader
-**Difficulty**: ⭐⭐⭐ Hard
 
 Assign each cell to one of 20 kidney cell type populations using a 300-gene Xenium panel.
 
@@ -111,7 +117,6 @@ Assign each cell to one of 20 kidney cell type populations using a 300-gene Xeni
 
 **Platform**: Vizgen (MERFISH)
 **Grader**: LabelSetJaccardGrader
-**Difficulty**: ⭐⭐⭐ Hard
 
 Perform temporal differential expression comparing aging (90wk) vs juvenile (4wk) astrocytes in mouse brain.
 
@@ -140,7 +145,6 @@ Perform temporal differential expression comparing aging (90wk) vs juvenile (4wk
 
 **Platform**: Curio Seeker
 **Grader**: NumericToleranceGrader
-**Difficulty**: ⭐⭐⭐ Hard
 
 Perform clustering and measure spatial contiguity by calculating fragmentation. Tests whether clusters are spatially coherent or scattered.
 
@@ -164,7 +168,6 @@ Perform clustering and measure spatial contiguity by calculating fragmentation. 
 
 **Platform**: Vizgen (MERFISH)
 **Grader**: LabelSetJaccardGrader
-**Difficulty**: ⭐⭐ Medium
 
 Identify astrocyte clusters and extract marker genes from mouse brain MERFISH data.
 
@@ -215,14 +218,14 @@ Identify astrocyte clusters and extract marker genes from mouse brain MERFISH da
 
 ## Task Type Distribution
 
-| Category | Count | Difficulty Range |
-|----------|-------|------------------|
-| QC | 1 | ⭐ |
-| Preprocessing | 1 | ⭐ |
-| Clustering | 1 | ⭐⭐ |
-| Cell Typing | 1 | ⭐⭐⭐ |
-| Differential Expression | 1 | ⭐⭐⭐ |
-| Spatial Analysis | 2 | ⭐⭐ - ⭐⭐⭐ |
+| Category | Example Count |
+|----------|---------------|
+| QC | 1 |
+| Preprocessing | 1 |
+| Clustering | 1 |
+| Cell Typing | 1 |
+| Differential Expression | 1 |
+| Spatial Analysis | 2 |
 
 ---
 
@@ -239,17 +242,17 @@ Identify astrocyte clusters and extract marker genes from mouse brain MERFISH da
 
 ---
 
-## Contributing
+## Benchmark Access
 
-Want to add more evaluations? See [docs/adding_evals.md](../docs/adding_evals.md) for guidelines.
+To obtain access to the full 98-evaluation benchmark for official model evaluation:
 
-**Priority areas for expansion**:
-- More ATAC-seq specific tasks (motif analysis, peak calling)
-- Spatial statistics (Moran's I, spatial autocorrelation)
-- Multi-modal integration
-- Temporal analysis
-- Advanced cell typing (hierarchical, rare populations)
-- More representation of all grader types
+1. **Review the examples** in this repository to understand the format
+2. **Contact**: [kenny@latch.bio](mailto:kenny@latch.bio) for benchmark access
+3. **Submit results** following the guidelines in [CONTRIBUTING.md](../CONTRIBUTING.md)
+
+**Why is the full benchmark withheld?**
+
+Making all evaluations public would allow models to be specifically optimized for the benchmark tasks, undermining the assessment of genuine spatial biology reasoning. The withheld evaluations ensure that reported performance reflects true capabilities rather than overfitting.
 
 ---
 
@@ -278,19 +281,13 @@ spatialbench batch evals/ --model my-model
 
 ---
 
-## Interpreting Results
+## Using These Examples
 
-**Pass Rate**: Percentage of evaluations passed
-- 90-100%: Excellent spatial biology agent
-- 70-90%: Good performance, some gaps
-- 50-70%: Basic capabilities, needs improvement
-- <50%: Significant limitations
+These example evaluations can help you:
 
-**Category Performance**: Where does your agent excel?
-- High QC/Preprocessing, low Cell Typing → Good at mechanics, weak on biology
-- High Cell Typing, low Clustering → Good biological knowledge, weak on algorithms
-- Balanced → Well-rounded agent
+1. **Understand the format**: See how tasks are specified and graded
+2. **Test your harness integration**: Verify your agent can parse tasks and write outputs
+3. **Develop locally**: Build and test your spatial biology agent
+4. **Prepare for benchmark**: Ensure your system works before full evaluation
 
-**Difficulty Distribution**:
-- Strong on ⭐, weak on ⭐⭐⭐ → Handles simple tasks, struggles with complexity
-- Strong across all levels → Production-ready agent
+**Note**: Performance on these 7 examples does not predict performance on the full 98-evaluation benchmark. Submit to the official benchmark for comprehensive assessment.
