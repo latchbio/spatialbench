@@ -48,11 +48,19 @@ SpatialBench includes built-in support for [mini-swe-agent](https://github.com/a
 pip install spatialbench
 
 # Configure your model
-export MSWEA_MODEL_NAME=claude-3-5-sonnet-20241022
+export MSWEA_MODEL_NAME=anthropic/claude-sonnet-4-5
 export ANTHROPIC_API_KEY=your_api_key
 
-# Run an evaluation
+# Run a single evaluation
 spatialbench run evals/qc/seeker_qc_basic.json --agent minisweagent
+
+# Run batch evaluations
+spatialbench batch evals_full/seeker \
+  --agent minisweagent \
+  --model anthropic/claude-sonnet-4-5 \
+  --output results/run1 \
+  --parallel 6 \
+  --keep-workspace
 ```
 
 Or programmatically:
@@ -159,12 +167,45 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
 - Creating custom graders
 - Submitting benchmark results
 
+## Batch Evaluations
+
+SpatialBench supports batch evaluation with parallel execution:
+
+```bash
+spatialbench batch evals_full/seeker \
+  --agent minisweagent \
+  --model anthropic/claude-sonnet-4-5 \
+  --output results/run1 \
+  --parallel 6 \
+  --keep-workspace
+```
+
+For running benchmarks across multiple models, use the benchmark script:
+
+```bash
+./scripts/benchmark_models.sh evals_full/seeker 6 true
+```
+
+Results are organized by run timestamp in `results/run_TIMESTAMP/` directories.
+
+For monitoring batch runs and troubleshooting, see [BATCH_MONITORING.md](BATCH_MONITORING.md).
+
+### Batch Results
+
+Batch runs produce:
+- `batch_results.json` - Full results with pass/fail status, agent answers, and grader outputs
+- `batch_log.txt` - Execution log with progress updates
+- Agent metrics: cost, steps, duration per evaluation
+- Summary statistics: pass rate, average cost, average steps
+
 ## Documentation
 
+- [CLI Usage Guide](docs/CLI_USAGE.md)
 - [Evaluation Specification](docs/specification.md)
 - [Grader API](docs/graders.md)
 - [Adding Evaluations](docs/adding_evals.md)
 - [Evaluation Catalog](evals/README.md)
+- [Batch Monitoring Guide](BATCH_MONITORING.md)
 
 ## Citation
 
