@@ -2,22 +2,72 @@ import io
 import json
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
+
+class StreamingLogFile:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.buffer = io.StringIO()
+
+    def write(self, data):
+        self.buffer.write(data)
+        with open(self.file_path, 'a') as f:
+            f.write(data)
+            f.flush()
+
+    def flush(self):
+        pass
+
+    def getvalue(self):
+        return self.buffer.getvalue()
+
+def _patch_agent_for_progress(log_file, agent_class):
+    original_add_message = agent_class.add_message
+
+    def patched_add_message(self, role, content, **kwargs):
+        original_add_message(self, role, content, **kwargs)
+
+        with open(log_file, 'a') as f:
+            if role == "assistant":
+                step_num = len([m for m in self.messages if m.get("role") == "assistant"])
+                f.write(f"\n[Step {step_num}]\n")
+                f.write(f"Assistant: {content}\n")
+            elif role == "user" and len(self.messages) > 2:
+                f.write(f"Observation: {content}\n")
+            f.flush()
+
+    agent_class.add_message = patched_add_message
 
 def run_minisweagent_task(
     task_prompt: str,
     work_dir: Path,
     model_name: str | None = None,
     agent_config: dict | None = None,
+    timeout: int = 1200,
 ) -> dict:
-    from minisweagent.agents.default import DefaultAgent
+    from minisweagent.agents.default import DefaultAgent, AgentConfig, FormatError
     from minisweagent.environments.local import LocalEnvironment
     from minisweagent.models import get_model
+    import re
+
+    class FlexibleAgent(DefaultAgent):
+        def parse_action(self, response: dict) -> dict:
+            content = response["content"]
+            actions = re.findall(r"```(?:bash)?\s*\n(.*?)\n```", content, re.DOTALL)
+            if len(actions) == 1:
+                return {"action": actions[0].strip(), **response}
+            raise FormatError(self.render_template(self.config.format_error_template, actions=actions))
 
     original_dir = os.getcwd()
 
-    captured_output = io.StringIO()
+    agent_log_file = work_dir / "agent_output.log"
+    _patch_agent_for_progress(agent_log_file, FlexibleAgent)
+    if agent_log_file.exists():
+        agent_log_file.unlink()
+
+    captured_output = StreamingLogFile(agent_log_file)
     original_stdout = sys.stdout
     original_stderr = sys.stderr
 
@@ -28,12 +78,15 @@ def run_minisweagent_task(
         def write(self, data):
             for stream in self.streams:
                 stream.write(data)
-                stream.flush()
+                if hasattr(stream, 'flush'):
+                    stream.flush()
 
         def flush(self):
             for stream in self.streams:
-                stream.flush()
+                if hasattr(stream, 'flush'):
+                    stream.flush()
 
+    agent = None
     try:
         os.chdir(str(work_dir))
 
@@ -42,13 +95,16 @@ def run_minisweagent_task(
 
         enhanced_prompt = _enhance_prompt_with_local_files(task_prompt, work_dir)
 
-        model = get_model(model_name)
+        if model_name:
+            os.environ['MSWEA_MODEL_NAME'] = model_name
+
+        model = get_model()
         env = LocalEnvironment()
 
         if agent_config:
-            agent = DefaultAgent(model, env, **agent_config)
+            agent = FlexibleAgent(model, env, **agent_config)
         else:
-            agent = DefaultAgent(model, env)
+            agent = FlexibleAgent(model, env)
 
         try:
             agent.run(enhanced_prompt)
@@ -61,8 +117,6 @@ def run_minisweagent_task(
             sys.stdout = original_stdout
             sys.stderr = original_stderr
 
-            agent_log_file = work_dir / "agent_output.log"
-            agent_log_file.write_text(captured_output.getvalue())
             print(f"Agent output saved to: {agent_log_file}")
 
             if hasattr(agent, "messages"):
@@ -76,21 +130,46 @@ def run_minisweagent_task(
                 print(f"  Total message exchanges: {len(agent.messages)}")
 
         eval_answer_file = work_dir / "eval_answer.json"
+        agent_answer = None
+        error_details = None
+
         if not eval_answer_file.exists():
-            raise FileNotFoundError(
-                f"Agent did not create eval_answer.json in {work_dir}. "
-                "Ensure the agent completes the task and writes the answer file."
-            )
+            agent_log_file = work_dir / "agent_output.log"
+            log_tail = ""
+            if agent_log_file.exists():
+                log_content = agent_log_file.read_text()
+                log_tail = log_content[-1000:]
 
-        try:
-            agent_answer = json.loads(eval_answer_file.read_text())
-        except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Failed to parse eval_answer.json: {e}. "
-                f"File contents: {eval_answer_file.read_text()[:500]}"
-            )
+            trajectory_info = ""
+            if hasattr(agent, "messages"):
+                trajectory_info = f"Agent had {len(agent.messages)} message exchanges."
 
-        return agent_answer
+            error_details = {
+                "error": "Agent did not create eval_answer.json",
+                "trajectory_info": trajectory_info,
+                "log_tail": log_tail
+            }
+            print(f"\nWarning: Agent did not create eval_answer.json. {trajectory_info}")
+        else:
+            try:
+                agent_answer = json.loads(eval_answer_file.read_text())
+            except json.JSONDecodeError as e:
+                error_details = {
+                    "error": f"Failed to parse eval_answer.json: {e}",
+                    "file_contents": eval_answer_file.read_text()[:500]
+                }
+                print(f"\nWarning: Failed to parse eval_answer.json: {e}")
+
+        metadata = {}
+        if hasattr(agent, "model"):
+            metadata["total_cost"] = getattr(agent.model, "cost", None)
+            metadata["n_steps"] = getattr(agent.model, "n_calls", None)
+        if hasattr(agent, "messages"):
+            metadata["n_messages"] = len(agent.messages)
+        if error_details:
+            metadata["error_details"] = error_details
+
+        return {"answer": agent_answer, "metadata": metadata}
 
     finally:
         os.chdir(original_dir)

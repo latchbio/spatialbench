@@ -1,9 +1,51 @@
 import click
 import json
+import time
+from datetime import datetime
 from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from spatialbench import EvalRunner, TestCase
 from spatialbench.harness import run_minisweagent_task, batch_download_datasets
+
+def _run_single_eval(eval_file_path, agent, model, keep_workspace):
+    eval_file = Path(eval_file_path)
+    start_time = time.time()
+
+    if agent == "minisweagent":
+        def agent_fn(task_prompt, work_dir):
+            return run_minisweagent_task(task_prompt, work_dir, model_name=model)
+    else:
+        agent_fn = None
+
+    try:
+        runner = EvalRunner(eval_file, keep_workspace=keep_workspace)
+        result = runner.run(agent_function=agent_fn)
+        duration = time.time() - start_time
+
+        output = {
+            "eval": eval_file.name,
+            "passed": result.get("passed"),
+            "test_id": result.get("test_id"),
+            "model": model,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "duration_s": round(duration, 2),
+        }
+
+        if "metadata" in result:
+            output.update(result["metadata"])
+
+        return output
+    except Exception as e:
+        duration = time.time() - start_time
+        return {
+            "eval": eval_file.name,
+            "passed": False,
+            "error": str(e),
+            "model": model,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "duration_s": round(duration, 2),
+        }
 
 @click.group()
 @click.version_option(version="0.1.0")
@@ -57,10 +99,6 @@ def run(eval_path, keep_workspace, verbose, agent, model):
 def batch(eval_dir, agent, model, output, parallel, keep_workspace):
     click.echo(f"Running batch evaluations from: {eval_dir}")
 
-    if parallel > 1:
-        click.echo(f"Parallel execution ({parallel} workers) not yet implemented")
-        click.echo("Running sequentially...")
-
     eval_dir = Path(eval_dir)
     eval_files = list(eval_dir.rglob("*.json"))
 
@@ -103,36 +141,84 @@ def batch(eval_dir, agent, model, output, parallel, keep_workspace):
     click.echo("STEP 3: Running evaluations")
     click.echo("=" * 80)
 
-    if agent == "minisweagent":
-        def agent_fn(task_prompt, work_dir):
-            return run_minisweagent_task(task_prompt, work_dir, model_name=model)
+    if parallel > 1:
+        click.echo(f"Running {len(eval_files)} evaluations with {parallel} parallel workers\n")
+
+        results = []
+        completed = 0
+
+        with ProcessPoolExecutor(max_workers=parallel) as executor:
+            future_to_eval = {
+                executor.submit(_run_single_eval, str(eval_file), agent, model, keep_workspace): eval_file
+                for eval_file in eval_files
+            }
+
+            for future in as_completed(future_to_eval):
+                eval_file = future_to_eval[future]
+                completed += 1
+
+                try:
+                    result = future.result()
+                    results.append(result)
+
+                    status = "✓ PASSED" if result.get("passed") else "✗ FAILED"
+                    click.echo(f"[{completed}/{len(eval_files)}] {eval_file.name}: {status}")
+
+                except Exception as e:
+                    click.echo(f"[{completed}/{len(eval_files)}] {eval_file.name}: ✗ ERROR: {e}")
+                    results.append({
+                        "eval": eval_file.name,
+                        "passed": False,
+                        "error": str(e),
+                    })
     else:
-        agent_fn = None
+        results = []
+        for i, eval_file in enumerate(eval_files, 1):
+            click.echo(f"\n[{i}/{len(eval_files)}] Running: {eval_file.name}")
+            click.echo("-" * 80)
 
-    results = []
-    for i, eval_file in enumerate(eval_files, 1):
-        click.echo(f"\n[{i}/{len(eval_files)}] Running: {eval_file.name}")
-        click.echo("-" * 80)
+            start_time = time.time()
 
-        try:
-            runner = EvalRunner(eval_file, keep_workspace=keep_workspace)
-            result = runner.run(agent_function=agent_fn)
-            results.append({
-                "eval": eval_file.name,
-                "passed": result.get("passed"),
-                "test_id": result.get("test_id"),
-            })
+            try:
+                runner = EvalRunner(eval_file, keep_workspace=keep_workspace)
 
-            status = "✓ PASSED" if result.get("passed") else "✗ FAILED"
-            click.echo(f"Result: {status}")
+                if agent == "minisweagent":
+                    def agent_fn(task_prompt, work_dir):
+                        return run_minisweagent_task(task_prompt, work_dir, model_name=model)
+                else:
+                    agent_fn = None
 
-        except Exception as e:
-            click.echo(f"✗ ERROR: {e}")
-            results.append({
-                "eval": eval_file.name,
-                "passed": False,
-                "error": str(e),
-            })
+                result = runner.run(agent_function=agent_fn)
+                duration = time.time() - start_time
+
+                output = {
+                    "eval": eval_file.name,
+                    "passed": result.get("passed"),
+                    "test_id": result.get("test_id"),
+                    "model": model,
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "duration_s": round(duration, 2),
+                }
+
+                if "metadata" in result:
+                    output.update(result["metadata"])
+
+                results.append(output)
+
+                status = "✓ PASSED" if result.get("passed") else "✗ FAILED"
+                click.echo(f"Result: {status}")
+
+            except Exception as e:
+                duration = time.time() - start_time
+                click.echo(f"✗ ERROR: {e}")
+                results.append({
+                    "eval": eval_file.name,
+                    "passed": False,
+                    "error": str(e),
+                    "model": model,
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "duration_s": round(duration, 2),
+                })
 
     click.echo("\n" + "=" * 80)
     click.echo("BATCH RESULTS")
@@ -142,17 +228,66 @@ def batch(eval_dir, agent, model, output, parallel, keep_workspace):
     failed = sum(1 for r in results if r.get("passed") is False)
     errors = sum(1 for r in results if "error" in r)
 
+    durations = [r.get("duration_s", 0) for r in results if "duration_s" in r]
+    avg_duration = sum(durations) / len(durations) if durations else 0
+    total_duration = sum(durations)
+
+    costs = [r.get("total_cost", 0) for r in results if r.get("total_cost") is not None]
+    total_cost = sum(costs) if costs else None
+    avg_cost = sum(costs) / len(costs) if costs else None
+
+    steps = [r.get("n_steps", 0) for r in results if r.get("n_steps") is not None]
+    total_steps = sum(steps) if steps else None
+    avg_steps = sum(steps) / len(steps) if steps else None
+
     click.echo(f"Total: {len(results)} evaluations")
     click.echo(f"Passed: {passed} ({passed/len(results)*100:.1f}%)")
     click.echo(f"Failed: {failed} ({failed/len(results)*100:.1f}%)")
     if errors:
         click.echo(f"Errors: {errors}")
+    click.echo(f"Average duration: {avg_duration:.1f}s")
+    click.echo(f"Total duration: {total_duration:.1f}s ({total_duration/60:.1f}m)")
+    if total_cost is not None:
+        click.echo(f"Total cost: ${total_cost:.4f}")
+        click.echo(f"Average cost per eval: ${avg_cost:.4f}")
+    if total_steps is not None:
+        click.echo(f"Total steps: {total_steps}")
+        click.echo(f"Average steps per eval: {avg_steps:.1f}")
+    if model:
+        click.echo(f"Model: {model}")
 
     if output:
         output_path = Path(output)
         output_path.mkdir(parents=True, exist_ok=True)
+
+        metadata = {
+            "model": model,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "eval_dir": str(eval_dir),
+            "total_evals": len(results),
+            "passed": passed,
+            "failed": failed,
+            "errors": errors,
+            "pass_rate": round(passed/len(results)*100, 1) if results else 0,
+            "avg_duration_s": round(avg_duration, 2),
+            "total_duration_s": round(total_duration, 2),
+        }
+
+        if total_cost is not None:
+            metadata["total_cost"] = round(total_cost, 4)
+            metadata["avg_cost_per_eval"] = round(avg_cost, 4)
+
+        if total_steps is not None:
+            metadata["total_steps"] = total_steps
+            metadata["avg_steps_per_eval"] = round(avg_steps, 1)
+
+        batch_summary = {
+            "metadata": metadata,
+            "results": results
+        }
+
         results_file = output_path / "batch_results.json"
-        results_file.write_text(json.dumps(results, indent=2))
+        results_file.write_text(json.dumps(batch_summary, indent=2))
         click.echo(f"\nResults saved to: {results_file}")
 
 @main.command()
@@ -201,9 +336,9 @@ def validate(eval_path):
     except Exception as e:
         click.echo(f"❌ Validation error: {e}", err=True)
 
-@main.command()
+@main.command(name="list")
 @click.option("--category", "-c", help="Filter by category")
-def list(category):
+def list_evals(category):
     click.echo("SpatialBench Evaluations")
     click.echo("=" * 50)
 

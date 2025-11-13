@@ -58,6 +58,7 @@ Example eval_answer.json:
         print("=" * 80)
 
         agent_answer = None
+        agent_metadata = {}
 
         if agent_function is None:
             print("\nNo agent function provided. To run this eval, pass an agent_function that:")
@@ -73,7 +74,14 @@ Example eval_answer.json:
             print(f"  runner.run(agent_function=my_agent)")
         else:
             try:
-                agent_answer = agent_function(task_prompt, work_dir)
+                result = agent_function(task_prompt, work_dir)
+
+                if isinstance(result, dict) and "answer" in result:
+                    agent_answer = result["answer"]
+                    agent_metadata = result.get("metadata", {})
+                else:
+                    agent_answer = result
+
                 print("\nAgent completed successfully")
             except Exception as e:
                 print(f"\nAgent error: {e}")
@@ -127,9 +135,14 @@ Example eval_answer.json:
             print(f"\nTo inspect results:")
             print(f"  cd {work_dir}")
 
-        return {
+        result_dict = {
             "test_id": self.test_case.id,
             "agent_answer": agent_answer,
             "grader_result": grader_result,
             "passed": grader_result.passed if grader_result else None,
         }
+
+        if agent_metadata:
+            result_dict["metadata"] = agent_metadata
+
+        return result_dict
