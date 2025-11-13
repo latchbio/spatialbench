@@ -55,7 +55,7 @@ def run_minisweagent_task(
     class FlexibleAgent(DefaultAgent):
         def parse_action(self, response: dict) -> dict:
             content = response["content"]
-            actions = re.findall(r"```(?:bash)?\s*\n(.*?)\n```", content, re.DOTALL)
+            actions = re.findall(r"```(?:bash|sh)?\s*\n(.*?)\n```", content, re.DOTALL)
             if len(actions) == 1:
                 return {"action": actions[0].strip(), **response}
             raise FormatError(self.render_template(self.config.format_error_template, actions=actions))
