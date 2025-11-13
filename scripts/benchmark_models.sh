@@ -2,18 +2,19 @@
 set -e
 
 EVAL_DIR="${1:-evals_full/seeker}"
-OUTPUT_BASE="results"
+RUN_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+OUTPUT_BASE="results/run_${RUN_TIMESTAMP}"
 PARALLEL_WORKERS="${2:-6}"
 KEEP_WORKSPACE="${3:-true}"
 
 MODELS=(
-    "openai/gpt-5-codex"
     "anthropic/claude-sonnet-4-5"
+    "openai/gpt-5-codex"
 )
 
 MODEL_NAMES=(
-    "gpt5codex"
     "sonnet45"
+    "gpt5codex"
 )
 
 echo "=========================================="
