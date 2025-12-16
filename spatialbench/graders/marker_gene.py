@@ -1,23 +1,12 @@
 from spatialbench.graders.base import BinaryGrader, GraderResult
-from spatialbench.types import TestResult
 
 class MarkerGenePrecisionRecallGrader(BinaryGrader):
-    def evaluate(self, test_result: TestResult, config: dict) -> GraderResult:
+    def evaluate_answer(self, agent_answer: dict, config: dict) -> GraderResult:
         canonical_markers = config.get("canonical_markers", [])
         scoring = config.get("scoring", {})
         thresholds = scoring.get("pass_thresholds", {})
         precision_threshold = thresholds.get("precision_at_k", 0.60)
         recall_threshold = thresholds.get("recall_at_k", 0.50)
-
-        agent_answer = self.extract_answer_from_tags(test_result.conversation_history)
-
-        if agent_answer is None:
-            return GraderResult(
-                passed=False,
-                metrics={},
-                reasoning="Agent did not provide answer in <EVAL_ANSWER> tags",
-                agent_answer=None
-            )
 
         if "top_marker_genes" not in agent_answer:
             return GraderResult(
@@ -140,22 +129,12 @@ class MarkerGenePrecisionRecallGrader(BinaryGrader):
         return "\n".join(lines)
 
 class MarkerGeneSeparationGrader(BinaryGrader):
-    def evaluate(self, test_result: TestResult, config: dict) -> GraderResult:
+    def evaluate_answer(self, agent_answer: dict, config: dict) -> GraderResult:
         scoring = config.get("scoring", {})
         thresholds = scoring.get("pass_thresholds", {})
         mean_auroc_threshold = thresholds.get("mean_auroc", 0.85)
         fraction_high_threshold = thresholds.get("fraction_high", 0.70)
         per_gene_cutoff = thresholds.get("per_gene_cutoff", 0.80)
-
-        agent_answer = self.extract_answer_from_tags(test_result.conversation_history)
-
-        if agent_answer is None:
-            return GraderResult(
-                passed=False,
-                metrics={},
-                reasoning="Agent did not provide answer in <EVAL_ANSWER> tags",
-                agent_answer=None
-            )
 
         if "per_gene_stats" not in agent_answer:
             return GraderResult(

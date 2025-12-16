@@ -1,21 +1,10 @@
 from spatialbench.graders.base import BinaryGrader, GraderResult
-from spatialbench.types import TestResult
 
 class LabelSetJaccardGrader(BinaryGrader):
-    def evaluate(self, test_result: TestResult, config: dict) -> GraderResult:
+    def evaluate_answer(self, agent_answer: dict, config: dict) -> GraderResult:
         ground_truth_labels = set(config.get("ground_truth_labels", []))
         scoring = config.get("scoring", {})
         pass_threshold = scoring.get("pass_threshold", 0.90)
-
-        agent_answer = self.extract_answer_from_tags(test_result.conversation_history)
-
-        if agent_answer is None:
-            return GraderResult(
-                passed=False,
-                metrics={},
-                reasoning="Agent did not provide answer in <EVAL_ANSWER> tags",
-                agent_answer=None
-            )
 
         if "cell_types_predicted" not in agent_answer:
             return GraderResult(

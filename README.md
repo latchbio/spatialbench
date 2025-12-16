@@ -34,7 +34,7 @@ The full 98-evaluation benchmark is withheld to prevent overfitting and ensure t
 ### Installation
 
 ```bash
-pip install spatialbench
+pip install -e .
 ```
 
 ### Running an Evaluation
@@ -45,7 +45,7 @@ SpatialBench includes built-in support for [mini-swe-agent](https://github.com/a
 
 ```bash
 # Install spatialbench with mini-swe-agent
-pip install spatialbench
+pip install -e .
 
 # Configure your model
 export MSWEA_MODEL_NAME=anthropic/claude-sonnet-4-5

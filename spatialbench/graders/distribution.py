@@ -1,8 +1,7 @@
 from spatialbench.graders.base import BinaryGrader, GraderResult
-from spatialbench.types import TestResult
 
 class DistributionComparisonGrader(BinaryGrader):
-    def evaluate(self, test_result: TestResult, config: dict) -> GraderResult:
+    def evaluate_answer(self, agent_answer: dict, config: dict) -> GraderResult:
         ground_truth = config.get("ground_truth", {})
         tolerances = config.get("tolerances", {})
 
@@ -12,16 +11,6 @@ class DistributionComparisonGrader(BinaryGrader):
         total_cells_tolerance = tolerances.get("total_cells", {})
         pct_tolerance_config = tolerances.get("cell_type_percentages", {})
         pct_tolerance = pct_tolerance_config.get("value", 3.0)
-
-        agent_answer = self.extract_answer_from_tags(test_result.conversation_history)
-
-        if agent_answer is None:
-            return GraderResult(
-                passed=False,
-                metrics={},
-                reasoning="Agent did not provide answer in <EVAL_ANSWER> tags",
-                agent_answer=None
-            )
 
         if "total_cells" not in agent_answer:
             return GraderResult(

@@ -1,8 +1,7 @@
 from spatialbench.graders.base import BinaryGrader, GraderResult
-from spatialbench.types import TestResult
 
 class SpatialAdjacencyGrader(BinaryGrader):
-    def evaluate(self, test_result: TestResult, config: dict) -> GraderResult:
+    def evaluate_answer(self, agent_answer: dict, config: dict) -> GraderResult:
         scoring = config.get("scoring", {})
         thresholds = scoring.get("pass_thresholds", {})
 
@@ -10,16 +9,6 @@ class SpatialAdjacencyGrader(BinaryGrader):
         max_p90_ic_to_pc = thresholds.get("max_p90_ic_to_pc_um", 80.0)
         min_pct_within_15um = thresholds.get("min_pct_ic_within_15um", 60.0)
         min_pct_mixed_within_55um = thresholds.get("min_pct_ic_mixed_within_55um", 60.0)
-
-        agent_answer = self.extract_answer_from_tags(test_result.conversation_history)
-
-        if agent_answer is None:
-            return GraderResult(
-                passed=False,
-                metrics={},
-                reasoning="Agent did not provide answer in <EVAL_ANSWER> tags",
-                agent_answer=None
-            )
 
         required_fields = [
             "median_ic_to_pc_um",
