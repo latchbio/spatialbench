@@ -6,9 +6,10 @@ from spatialbench.graders import GRADER_REGISTRY
 from spatialbench.harness.utils import download_data, setup_workspace, cleanup_workspace
 
 class EvalRunner:
-    def __init__(self, eval_path: str | Path, keep_workspace: bool = False):
+    def __init__(self, eval_path: str | Path, keep_workspace: bool = False, run_id: str | None = None):
         self.eval_path = Path(eval_path)
         self.keep_workspace = keep_workspace
+        self.run_id = run_id
 
         if not self.eval_path.exists():
             raise FileNotFoundError(f"Eval file not found: {self.eval_path}")
@@ -26,7 +27,7 @@ class EvalRunner:
         print(self.test_case.task)
         print("-" * 80)
 
-        work_dir = setup_workspace(self.test_case.id)
+        work_dir = setup_workspace(self.test_case.id, self.run_id)
         print(f"\nWorking directory: {work_dir}")
 
         print("\n" + "=" * 80)

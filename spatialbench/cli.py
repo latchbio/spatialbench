@@ -8,7 +8,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from spatialbench import EvalRunner, TestCase
 from spatialbench.harness import run_minisweagent_task, batch_download_datasets
 
-def _run_single_eval(eval_file_path, agent, model, keep_workspace):
+def _run_single_eval(eval_file_path, agent, model, keep_workspace, run_id=None):
     eval_file = Path(eval_file_path)
     start_time = time.time()
 
@@ -19,7 +19,7 @@ def _run_single_eval(eval_file_path, agent, model, keep_workspace):
         agent_fn = None
 
     try:
-        runner = EvalRunner(eval_file, keep_workspace=keep_workspace)
+        runner = EvalRunner(eval_file, keep_workspace=keep_workspace, run_id=run_id)
         result = runner.run(agent_function=agent_fn)
         duration = time.time() - start_time
 
@@ -99,6 +99,9 @@ def run(eval_path, keep_workspace, verbose, agent, model):
 def batch(eval_dir, agent, model, output, parallel, keep_workspace):
     click.echo(f"Running batch evaluations from: {eval_dir}")
 
+    run_id = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    click.echo(f"Run ID: {run_id}")
+
     eval_dir = Path(eval_dir)
     eval_files = list(eval_dir.rglob("*.json"))
 
@@ -149,7 +152,7 @@ def batch(eval_dir, agent, model, output, parallel, keep_workspace):
 
         with ProcessPoolExecutor(max_workers=parallel) as executor:
             future_to_eval = {
-                executor.submit(_run_single_eval, str(eval_file), agent, model, keep_workspace): eval_file
+                executor.submit(_run_single_eval, str(eval_file), agent, model, keep_workspace, run_id): eval_file
                 for eval_file in eval_files
             }
 
@@ -180,7 +183,7 @@ def batch(eval_dir, agent, model, output, parallel, keep_workspace):
             start_time = time.time()
 
             try:
-                runner = EvalRunner(eval_file, keep_workspace=keep_workspace)
+                runner = EvalRunner(eval_file, keep_workspace=keep_workspace, run_id=run_id)
 
                 if agent == "minisweagent":
                     def agent_fn(task_prompt, work_dir):
@@ -191,7 +194,7 @@ def batch(eval_dir, agent, model, output, parallel, keep_workspace):
                 result = runner.run(agent_function=agent_fn)
                 duration = time.time() - start_time
 
-                output = {
+                eval_output = {
                     "eval": eval_file.name,
                     "passed": result.get("passed"),
                     "test_id": result.get("test_id"),
@@ -201,9 +204,9 @@ def batch(eval_dir, agent, model, output, parallel, keep_workspace):
                 }
 
                 if "metadata" in result:
-                    output.update(result["metadata"])
+                    eval_output.update(result["metadata"])
 
-                results.append(output)
+                results.append(eval_output)
 
                 status = "✓ PASSED" if result.get("passed") else "✗ FAILED"
                 click.echo(f"Result: {status}")

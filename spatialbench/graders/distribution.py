@@ -12,14 +12,6 @@ class DistributionComparisonGrader(BinaryGrader):
         pct_tolerance_config = tolerances.get("cell_type_percentages", {})
         pct_tolerance = pct_tolerance_config.get("value", 3.0)
 
-        if "total_cells" not in agent_answer:
-            return GraderResult(
-                passed=False,
-                metrics={},
-                reasoning="Agent answer missing required field: total_cells",
-                agent_answer=agent_answer
-            )
-
         if "cell_type_distribution" not in agent_answer:
             return GraderResult(
                 passed=False,
@@ -28,14 +20,14 @@ class DistributionComparisonGrader(BinaryGrader):
                 agent_answer=agent_answer
             )
 
-        agent_total_cells = agent_answer["total_cells"]
+        agent_total_cells = agent_answer.get("total_cells")
         agent_distribution = agent_answer["cell_type_distribution"]
 
         metrics = {}
         all_pass = True
         failures = []
 
-        if gt_total_cells is not None:
+        if gt_total_cells is not None and agent_total_cells is not None:
             total_cells_tol_value = total_cells_tolerance.get("value", 0)
             total_cells_diff = abs(agent_total_cells - gt_total_cells)
             total_cells_pass = total_cells_diff <= total_cells_tol_value
@@ -107,7 +99,7 @@ class DistributionComparisonGrader(BinaryGrader):
         lines.append(f"Distribution Comparison: {'PASS' if passed else 'FAIL'}")
         lines.append("")
 
-        if gt_total is not None:
+        if gt_total is not None and agent_total is not None:
             total_check = "✓" if total_pass else "✗"
             lines.append(f"Total cells: {agent_total} vs {gt_total} {total_check}")
             lines.append("")

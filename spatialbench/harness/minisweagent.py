@@ -55,10 +55,19 @@ def run_minisweagent_task(
     class FlexibleAgent(DefaultAgent):
         def parse_action(self, response: dict) -> dict:
             content = response["content"]
-            actions = re.findall(r"```(?:bash|sh)?\s*\n(.*?)\n```", content, re.DOTALL)
+            actions = re.findall(r"```(?:bash|sh|shell)?\s*\n(.*?)\n?```", content, re.DOTALL)
             if len(actions) == 1:
                 return {"action": actions[0].strip(), **response}
             raise FormatError(self.render_template(self.config.format_error_template, actions=actions))
+
+        def has_finished(self, output: dict):
+            from minisweagent.agents.default import Submitted
+            full_output = output.get("output", "")
+            for marker in ["COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT", "MINI_SWE_AGENT_FINAL_OUTPUT"]:
+                if marker in full_output:
+                    idx = full_output.find(marker)
+                    rest = full_output[idx + len(marker):].strip()
+                    raise Submitted(rest)
 
     original_dir = os.getcwd()
 
@@ -99,12 +108,12 @@ def run_minisweagent_task(
             os.environ['MSWEA_MODEL_NAME'] = model_name
 
         model = get_model()
-        env = LocalEnvironment()
+        env = LocalEnvironment(timeout=1800)
 
         if agent_config:
-            agent = FlexibleAgent(model, env, **agent_config)
+            agent = FlexibleAgent(model, env, step_limit=100, **agent_config)
         else:
-            agent = FlexibleAgent(model, env)
+            agent = FlexibleAgent(model, env, step_limit=100)
 
         try:
             agent.run(enhanced_prompt)
