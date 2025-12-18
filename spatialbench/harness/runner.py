@@ -109,7 +109,17 @@ Example eval_answer.json:
             if grader_type in GRADER_REGISTRY:
                 grader_cls = GRADER_REGISTRY[grader_type]
                 grader = grader_cls()
-                grader_result = grader.evaluate_answer(agent_answer, grader_config)
+                try:
+                    grader_result = grader.evaluate_answer(agent_answer, grader_config)
+                except Exception as e:
+                    from spatialbench.graders.base import GraderResult
+                    import traceback
+                    grader_result = GraderResult(
+                        passed=False,
+                        metrics={"grader_error": str(e)},
+                        reasoning=f"Grader failed due to malformed agent output: {e}\n\n{traceback.format_exc()}",
+                        agent_answer=agent_answer
+                    )
 
                 print(f"\n{'✓ EVAL PASSED' if grader_result.passed else '✗ EVAL FAILED'}")
                 print("\nGrader reasoning:")
