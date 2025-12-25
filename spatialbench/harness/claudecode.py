@@ -41,9 +41,13 @@ Correct order: 1) Perform analysis 2) Write eval_answer.json with your answer 3)
     if run_as_claude_user:
         import pwd
         import shutil
+        import stat
         try:
             pwd.getpwnam("claude")
-            spatialbench_dir = Path.home() / ".spatialbench"
+            home_dir = Path.home()
+            current_mode = home_dir.stat().st_mode
+            home_dir.chmod(current_mode | stat.S_IXOTH)
+            spatialbench_dir = home_dir / ".spatialbench"
             if spatialbench_dir.exists():
                 shutil.chown(spatialbench_dir, user="claude", group="claude")
                 for item in spatialbench_dir.rglob("*"):
