@@ -1,225 +1,103 @@
 # SpatialBench
 
-**A benchmark for evaluating AI agents on spatial biology analysis tasks**
+**Can AI agents extract biological insight from real-world spatial data?**
 
-SpatialBench is a comprehensive evaluation framework designed to test the capabilities of Large Language Models (LLMs) and AI agents on real-world spatial transcriptomics and epigenomics analysis workflows. The full benchmark comprises **98 evaluations** across multiple platforms (Xenium, Vizgen MERFISH, AtlasXomics ATAC-seq, Curio Seeker) and covers key analysis tasks from quality control to differential expression.
+SpatialBench is a benchmark of 146 verifiable problems derived from practical spatial transcriptomics workflows. Each problem snapshots an analysis state immediately before a target step and pairs it with a deterministic grader that evaluates recovery of a key biological result.
 
-**This repository contains 7 representative examples** from the full benchmark to demonstrate the evaluation format and grading system. The complete benchmark is withheld to prevent overfitting and ensure reliable model comparisons.
+Across frontier models, accuracy remains low (20–38%), with strong model–task and model–platform interactions. Harness design (tools, prompts, control flow) affects outcomes as much as base model choice.
 
-## Overview
+## Key Findings
 
-### Full Benchmark Scale
+| Model | Accuracy | Cost/Eval | Latency |
+|-------|----------|-----------|---------|
+| Opus-4.5 | 38.4% | $0.14 | 124s |
+| GPT-5.2 | 34.0% | $0.04 | 89s |
+| Sonnet-4.5 | 28.3% | $0.08 | 116s |
+| GPT-5.1 | 27.4% | $0.02 | 56s |
+| Grok-4.1 | 24.7% | $0.08 | 196s |
+| Gemini-2.5-Pro | 20.1% | $0.19 | 194s |
 
-| Technology       | Evaluations |
-|------------------|-------------|
-| Xenium           | 30          |
-| Vizgen (MERFISH) | 31          |
-| AtlasXomics      | 25          |
-| Seeker/Curio     | 12          |
-| **Total**        | **98**      |
+Full results with 95% confidence intervals are in [`results/`](results/).
 
-### This Repository
+## Benchmark Structure
 
-This repository contains **7 example evaluations** that demonstrate:
-- **Standardized evaluation format**: JSON-based test cases with clear task specifications
-- **Extensible grading system**: Multiple grader types for different evaluation criteria
-- **Platform coverage**: Examples from RNA (Xenium, MERFISH, Seeker) and ATAC-seq platforms
-- **Task diversity**: Samples across QC, preprocessing, clustering, cell typing, differential expression, and spatial analysis
-- **Framework-agnostic**: Works with any agent that can write JSON outputs
+**146 evaluations** across:
+- **5 platforms**: Xenium, Visium, MERFISH, Seeker, AtlasXomics
+- **7 task categories**: QC, Normalization, Dimensionality Reduction, Clustering, Cell Typing, Differential Expression, Spatial Analysis
 
-The full 98-evaluation benchmark is withheld to prevent overfitting and ensure that performance metrics reflect genuine spatial biology reasoning capabilities rather than memorization.
+Tasks require empirical interaction with the data—agents that rely on prior knowledge without performing the requisite analysis fail to complete many tasks correctly.
+
+## Canonical Examples
+
+This repository includes 10 canonical examples in [`evals_canonical/`](evals_canonical/) demonstrating the evaluation format. The full benchmark is withheld to prevent overfitting.
+
+| Task | Platform | Grader |
+|------|----------|--------|
+| QC | Xenium | Numeric |
+| Normalization | MERFISH | Numeric |
+| Dimensionality Reduction | Seeker | MCQ |
+| Clustering | Visium | P@K |
+| Clustering | MERFISH | MCQ |
+| Cell Typing | Xenium | Cosine |
+| Cell Typing | MERFISH | P@K |
+| Differential Expression | Seeker | P@K |
+| Spatial Analysis | Visium | Jaccard |
+| Spatial Analysis | Xenium | MCQ |
 
 ## Quick Start
 
-### Installation
-
 ```bash
 pip install -e .
+
+# Validate an evaluation
+spatialbench validate evals_canonical/qc/xenium_xenium_qc_filter_min_umi_counts.json
+
+# Run with mini-swe-agent
+export ANTHROPIC_API_KEY=your_key
+spatialbench run evals_canonical/qc/xenium_xenium_qc_filter_min_umi_counts.json --agent minisweagent
 ```
 
-### Running an Evaluation
-
-**Using mini-swe-agent (Recommended)**
-
-SpatialBench includes built-in support for [mini-swe-agent](https://github.com/anthropics/mini-swe-agent):
-
-```bash
-# Install spatialbench with mini-swe-agent
-pip install -e .
-
-# Configure your model
-export MSWEA_MODEL_NAME=anthropic/claude-sonnet-4-5
-export ANTHROPIC_API_KEY=your_api_key
-
-# Run a single evaluation
-spatialbench run evals/qc/seeker_qc_basic.json --agent minisweagent
-
-# Run batch evaluations
-spatialbench batch evals_full/seeker \
-  --agent minisweagent \
-  --model anthropic/claude-sonnet-4-5 \
-  --output results/run1 \
-  --parallel 6 \
-  --keep-workspace
-```
-
-Or programmatically:
-
-```python
-from spatialbench import EvalRunner, run_minisweagent_task
-
-runner = EvalRunner("evals/qc/seeker_qc_basic.json")
-result = runner.run(agent_function=run_minisweagent_task)
-
-print(f"Passed: {result['passed']}")
-```
-
-**Using a custom agent**
+### Custom Agent
 
 ```python
 from spatialbench import EvalRunner
 
 def my_agent(task_prompt, work_dir):
     import json
-    answer = {"mean_genes_per_bead": 45.2}
-    answer_file = work_dir / "eval_answer.json"
-    answer_file.write_text(json.dumps(answer))
+    answer = {"cells_after_filtering": 1374915}
+    (work_dir / "eval_answer.json").write_text(json.dumps(answer))
     return answer
 
-runner = EvalRunner("evals/qc/seeker_qc_basic.json")
+runner = EvalRunner("evals_canonical/qc/xenium_xenium_qc_filter_min_umi_counts.json")
 result = runner.run(agent_function=my_agent)
-
 print(f"Passed: {result['passed']}")
 ```
 
-## Task Categories
+## Graders
 
-The full benchmark spans six major categories of spatial biology analysis. This repository includes one representative example from each:
+Five grader families handle different answer types:
 
-### Quality Control (QC)
-Assess basic dataset properties: gene counts, UMI counts, mitochondrial fraction, etc.
+| Grader | Use Case |
+|--------|----------|
+| NumericTolerance | QC metrics, counts, expression values |
+| MultipleChoice | Discrete interpretation questions |
+| MarkerGenePrecisionRecall | Gene lists (P@K, R@K) |
+| LabelSetJaccard | Cell type sets |
+| DistributionComparison | Cell type proportions |
 
-**Example**: `evals/qc/seeker_qc_basic.json`
-
-### Preprocessing
-Test normalization, dimensionality reduction, and batch correction pipelines.
-
-**Example**: `evals/preprocessing/xenium_normalization.json`
-
-### Clustering
-Evaluate clustering algorithm application and parameter selection.
-
-**Example**: `evals/clustering/xenium_leiden.json`
-
-### Cell Type Annotation
-Test marker-based cell type assignment and biological reasoning.
-
-**Example**: `evals/cell_typing/xenium_kidney_typing.json`
-
-### Differential Expression
-Assess statistical testing and marker gene discovery.
-
-**Example**: `evals/differential_expression/vizgen_de_temporal.json`
-
-### Spatial Analysis
-Evaluate spatial-specific analyses like tissue composition and spatial contiguity.
-
-**Examples**: `evals/spatial_analysis/seeker_spatial_contiguity.json`, `evals/spatial_analysis/vizgen_tissue_composition.json`
-
-## Grader System
-
-SpatialBench includes 6 built-in graders:
-
-1. **NumericToleranceGrader**: For QC metrics, counts, percentages
-2. **LabelSetJaccardGrader**: For cell type label sets
-3. **DistributionComparisonGrader**: For cell type proportions
-4. **MarkerGenePrecisionRecallGrader**: For marker gene lists (P@K, R@K)
-5. **MarkerGeneSeparationGrader**: For expression-based validation (AUROC)
-6. **SpatialAdjacencyGrader**: For spatial proximity metrics
-
-See [docs/graders.md](docs/graders.md) for detailed documentation.
-
-## Evaluation Format
-
-Evaluations are defined in JSON:
-
-```json
-{
-  "id": "eval_identifier",
-  "task": "Natural language task description...",
-  "data_node": "latch://path/to/dataset.h5ad",
-  "grader": {
-    "type": "numeric_tolerance",
-    "config": {
-      "ground_truth": {"field": 100},
-      "tolerances": {"field": {"type": "absolute", "value": 5}}
-    }
-  }
-}
-```
-
-See [docs/specification.md](docs/specification.md) for the complete specification.
-
-## Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
-- Adding new evaluations
-- Creating custom graders
-- Submitting benchmark results
-
-## Batch Evaluations
-
-SpatialBench supports batch evaluation with parallel execution:
-
-```bash
-spatialbench batch evals_full/seeker \
-  --agent minisweagent \
-  --model anthropic/claude-sonnet-4-5 \
-  --output results/run1 \
-  --parallel 6 \
-  --keep-workspace
-```
-
-For running benchmarks across multiple models, use the benchmark script:
-
-```bash
-./scripts/benchmark_models.sh evals_full/seeker 6 true
-```
-
-Results are organized by run timestamp in `results/run_TIMESTAMP/` directories.
-
-For monitoring batch runs and troubleshooting, see [BATCH_MONITORING.md](BATCH_MONITORING.md).
-
-### Batch Results
-
-Batch runs produce:
-- `batch_results.json` - Full results with pass/fail status, agent answers, and grader outputs
-- `batch_log.txt` - Execution log with progress updates
-- Agent metrics: cost, steps, duration per evaluation
-- Summary statistics: pass rate, average cost, average steps
-
-## Documentation
-
-- [CLI Usage Guide](docs/CLI_USAGE.md)
-- [Evaluation Specification](docs/specification.md)
-- [Grader API](docs/graders.md)
-- [Adding Evaluations](docs/adding_evals.md)
-- [Evaluation Catalog](evals/README.md)
-- [Batch Monitoring Guide](BATCH_MONITORING.md)
+See [`spatialbench/graders/`](spatialbench/graders/) for implementations.
 
 ## Citation
 
-If you use SpatialBench in your research, please cite:
-
 ```bibtex
-@software{spatialbench2024,
-  title = {SpatialBench: A Benchmark for AI Agents on Spatial Biology Analysis},
-  author = {Latch Bio},
-  year = {2024},
+@article{spatialbench2025,
+  title = {SpatialBench: Can Agents Analyze Real-World Spatial Biology Data?},
+  author = {Workman, Kenny and Yang, Zhen and Muralidharan, Harihara and Le, Hannah},
+  year = {2025},
   url = {https://github.com/latchbio/spatialbench}
 }
 ```
 
 ## License
 
-Apache 2.0 - see [LICENSE](LICENSE) for details.
+Apache 2.0
