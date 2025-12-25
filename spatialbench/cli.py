@@ -6,20 +6,23 @@ from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from spatialbench import EvalRunner, TestCase
-from spatialbench.harness import run_minisweagent_task, batch_download_datasets
+from spatialbench.harness import run_minisweagent_task, run_claudecode_task, batch_download_datasets
 
-def _run_single_eval(eval_file_path, agent, model, keep_workspace):
+def _run_single_eval(eval_file_path, agent, model, keep_workspace, run_id=None):
     eval_file = Path(eval_file_path)
     start_time = time.time()
 
     if agent == "minisweagent":
         def agent_fn(task_prompt, work_dir):
             return run_minisweagent_task(task_prompt, work_dir, model_name=model)
+    elif agent == "claudecode":
+        def agent_fn(task_prompt, work_dir):
+            return run_claudecode_task(task_prompt, work_dir, model_name=model)
     else:
         agent_fn = None
 
     try:
-        runner = EvalRunner(eval_file, keep_workspace=keep_workspace)
+        runner = EvalRunner(eval_file, keep_workspace=keep_workspace, run_id=run_id)
         result = runner.run(agent_function=agent_fn)
         duration = time.time() - start_time
 
@@ -56,8 +59,8 @@ def main():
 @click.argument("eval_path", type=click.Path(exists=True))
 @click.option("--keep-workspace", is_flag=True, help="Keep the workspace directory after completion")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
-@click.option("--agent", type=click.Choice(["minisweagent"]), default=None, help="Agent to use for evaluation")
-@click.option("--model", default=None, help="Model name for mini-swe-agent (defaults to MSWEA_MODEL_NAME env var)")
+@click.option("--agent", type=click.Choice(["minisweagent", "claudecode"]), default=None, help="Agent to use for evaluation")
+@click.option("--model", default=None, help="Model name for agent")
 def run(eval_path, keep_workspace, verbose, agent, model):
     click.echo(f"Running evaluation: {eval_path}")
 
@@ -68,6 +71,18 @@ def run(eval_path, keep_workspace, verbose, agent, model):
 
         def agent_fn(task_prompt, work_dir):
             return run_minisweagent_task(task_prompt, work_dir, model_name=model)
+
+        result = runner.run(agent_function=agent_fn)
+
+        if result.get("passed"):
+            click.echo("\n✓ Evaluation PASSED")
+        else:
+            click.echo("\n✗ Evaluation FAILED")
+    elif agent == "claudecode":
+        click.echo(f"Using Claude Code{f' with model: {model}' if model else ''}")
+
+        def agent_fn(task_prompt, work_dir):
+            return run_claudecode_task(task_prompt, work_dir, model_name=model)
 
         result = runner.run(agent_function=agent_fn)
 
@@ -91,13 +106,16 @@ def run(eval_path, keep_workspace, verbose, agent, model):
 
 @main.command()
 @click.argument("eval_dir", type=click.Path(exists=True))
-@click.option("--agent", type=click.Choice(["minisweagent"]), default=None, help="Agent to use for evaluation")
+@click.option("--agent", type=click.Choice(["minisweagent", "claudecode"]), default=None, help="Agent to use for evaluation")
 @click.option("--model", default=None, help="Model name for agent")
 @click.option("--output", "-o", type=click.Path(), help="Output directory for results")
 @click.option("--parallel", "-p", type=int, default=1, help="Number of parallel workers")
 @click.option("--keep-workspace", is_flag=True, help="Keep workspace after each eval")
 def batch(eval_dir, agent, model, output, parallel, keep_workspace):
     click.echo(f"Running batch evaluations from: {eval_dir}")
+
+    run_id = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    click.echo(f"Run ID: {run_id}")
 
     eval_dir = Path(eval_dir)
     eval_files = list(eval_dir.rglob("*.json"))
@@ -149,7 +167,7 @@ def batch(eval_dir, agent, model, output, parallel, keep_workspace):
 
         with ProcessPoolExecutor(max_workers=parallel) as executor:
             future_to_eval = {
-                executor.submit(_run_single_eval, str(eval_file), agent, model, keep_workspace): eval_file
+                executor.submit(_run_single_eval, str(eval_file), agent, model, keep_workspace, run_id): eval_file
                 for eval_file in eval_files
             }
 
@@ -180,18 +198,21 @@ def batch(eval_dir, agent, model, output, parallel, keep_workspace):
             start_time = time.time()
 
             try:
-                runner = EvalRunner(eval_file, keep_workspace=keep_workspace)
+                runner = EvalRunner(eval_file, keep_workspace=keep_workspace, run_id=run_id)
 
                 if agent == "minisweagent":
                     def agent_fn(task_prompt, work_dir):
                         return run_minisweagent_task(task_prompt, work_dir, model_name=model)
+                elif agent == "claudecode":
+                    def agent_fn(task_prompt, work_dir):
+                        return run_claudecode_task(task_prompt, work_dir, model_name=model)
                 else:
                     agent_fn = None
 
                 result = runner.run(agent_function=agent_fn)
                 duration = time.time() - start_time
 
-                output = {
+                eval_output = {
                     "eval": eval_file.name,
                     "passed": result.get("passed"),
                     "test_id": result.get("test_id"),
@@ -201,9 +222,9 @@ def batch(eval_dir, agent, model, output, parallel, keep_workspace):
                 }
 
                 if "metadata" in result:
-                    output.update(result["metadata"])
+                    eval_output.update(result["metadata"])
 
-                results.append(output)
+                results.append(eval_output)
 
                 status = "✓ PASSED" if result.get("passed") else "✗ FAILED"
                 click.echo(f"Result: {status}")

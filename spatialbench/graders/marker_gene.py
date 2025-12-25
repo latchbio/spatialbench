@@ -17,9 +17,17 @@ class MarkerGenePrecisionRecallGrader(BinaryGrader):
             )
 
         predicted_genes = agent_answer["top_marker_genes"]
+        if not isinstance(predicted_genes, list):
+            return GraderResult(
+                passed=False,
+                metrics={},
+                reasoning=f"top_marker_genes must be a list, got {type(predicted_genes).__name__}",
+                agent_answer=agent_answer
+            )
+        predicted_genes = [str(g) for g in predicted_genes]
         k = len(predicted_genes)
 
-        canonical_set = set(gene.lower() for gene in canonical_markers)
+        canonical_set = set(str(gene).lower() for gene in canonical_markers)
         predicted_set = set(gene.lower() for gene in predicted_genes)
 
         true_positives = canonical_set & predicted_set
@@ -34,7 +42,7 @@ class MarkerGenePrecisionRecallGrader(BinaryGrader):
         passed = precision_pass and recall_pass
 
         original_case_map = {gene.lower(): gene for gene in predicted_genes}
-        canonical_case_map = {gene.lower(): gene for gene in canonical_markers}
+        canonical_case_map = {str(gene).lower(): str(gene) for gene in canonical_markers}
 
         true_positive_genes = [original_case_map.get(g, canonical_case_map.get(g, g)) for g in true_positives]
         false_positive_genes = [original_case_map.get(g, g) for g in false_positives]

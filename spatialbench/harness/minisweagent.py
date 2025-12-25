@@ -2,9 +2,22 @@ import io
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 from pathlib import Path
+
+OPERATION_TIMEOUT = 300
+EVAL_TIMEOUT = 600
+
+
+class AgentTimeoutError(Exception):
+    pass
+
+
+def _timeout_handler(signum, frame):
+    raise AgentTimeoutError("Agent exceeded time limit")
+
 
 class StreamingLogFile:
     def __init__(self, file_path):
@@ -23,6 +36,7 @@ class StreamingLogFile:
     def getvalue(self):
         return self.buffer.getvalue()
 
+
 def _patch_agent_for_progress(log_file, agent_class):
     original_add_message = agent_class.add_message
 
@@ -40,12 +54,14 @@ def _patch_agent_for_progress(log_file, agent_class):
 
     agent_class.add_message = patched_add_message
 
+
 def run_minisweagent_task(
     task_prompt: str,
     work_dir: Path,
     model_name: str | None = None,
     agent_config: dict | None = None,
-    timeout: int = 1200,
+    operation_timeout: int = OPERATION_TIMEOUT,
+    eval_timeout: int = EVAL_TIMEOUT,
 ) -> dict:
     from minisweagent.agents.default import DefaultAgent, AgentConfig, FormatError
     from minisweagent.environments.local import LocalEnvironment
@@ -55,10 +71,19 @@ def run_minisweagent_task(
     class FlexibleAgent(DefaultAgent):
         def parse_action(self, response: dict) -> dict:
             content = response["content"]
-            actions = re.findall(r"```(?:bash|sh)?\s*\n(.*?)\n```", content, re.DOTALL)
+            actions = re.findall(r"```(?:bash|sh|shell)?\s*\n(.*?)\n?```", content, re.DOTALL)
             if len(actions) == 1:
                 return {"action": actions[0].strip(), **response}
             raise FormatError(self.render_template(self.config.format_error_template, actions=actions))
+
+        def has_finished(self, output: dict):
+            from minisweagent.agents.default import Submitted
+            full_output = output.get("output", "")
+            for marker in ["COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT", "MINI_SWE_AGENT_FINAL_OUTPUT"]:
+                if marker in full_output:
+                    idx = full_output.find(marker)
+                    rest = full_output[idx + len(marker):].strip()
+                    raise Submitted(rest)
 
     original_dir = os.getcwd()
 
@@ -87,6 +112,7 @@ def run_minisweagent_task(
                     stream.flush()
 
     agent = None
+    timed_out = False
     try:
         os.chdir(str(work_dir))
 
@@ -95,25 +121,41 @@ def run_minisweagent_task(
 
         enhanced_prompt = _enhance_prompt_with_local_files(task_prompt, work_dir)
 
+        enhanced_prompt += """
+
+CRITICAL INSTRUCTIONS:
+1. Do NOT wrap your code in try/except blocks. Let errors propagate so you can see them and fix them in subsequent steps.
+2. You must write eval_answer.json BEFORE printing the completion signal.
+3. Correct order: Perform analysis -> Write eval_answer.json -> Print 'COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT' as your FINAL line of output."""
+
         if model_name:
             os.environ['MSWEA_MODEL_NAME'] = model_name
 
         model = get_model()
-        env = LocalEnvironment()
+        env = LocalEnvironment(timeout=operation_timeout)
 
         if agent_config:
-            agent = FlexibleAgent(model, env, **agent_config)
+            agent = FlexibleAgent(model, env, step_limit=100, **agent_config)
         else:
-            agent = FlexibleAgent(model, env)
+            agent = FlexibleAgent(model, env, step_limit=100)
+
+        old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
+        signal.alarm(eval_timeout)
 
         try:
             agent.run(enhanced_prompt)
+        except AgentTimeoutError:
+            timed_out = True
+            print(f"\nAgent timed out after {eval_timeout} seconds")
         except Exception as e:
             if "Submitted" in str(type(e).__name__):
                 pass
             else:
                 raise
         finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
+
             sys.stdout = original_stdout
             sys.stderr = original_stderr
 
@@ -144,12 +186,14 @@ def run_minisweagent_task(
             if hasattr(agent, "messages"):
                 trajectory_info = f"Agent had {len(agent.messages)} message exchanges."
 
+            error_msg = "Agent timed out" if timed_out else "Agent did not create eval_answer.json"
             error_details = {
-                "error": "Agent did not create eval_answer.json",
+                "error": error_msg,
+                "timed_out": timed_out,
                 "trajectory_info": trajectory_info,
                 "log_tail": log_tail
             }
-            print(f"\nWarning: Agent did not create eval_answer.json. {trajectory_info}")
+            print(f"\nWarning: {error_msg}. {trajectory_info}")
         else:
             try:
                 agent_answer = json.loads(eval_answer_file.read_text())
@@ -166,6 +210,9 @@ def run_minisweagent_task(
             metadata["n_steps"] = getattr(agent.model, "n_calls", None)
         if hasattr(agent, "messages"):
             metadata["n_messages"] = len(agent.messages)
+        if timed_out:
+            metadata["timed_out"] = True
+            metadata["eval_timeout_seconds"] = eval_timeout
         if error_details:
             metadata["error_details"] = error_details
 
@@ -173,6 +220,7 @@ def run_minisweagent_task(
 
     finally:
         os.chdir(original_dir)
+
 
 def _enhance_prompt_with_local_files(task_prompt: str, work_dir: Path) -> str:
     contextual_data_match = re.search(r'<ContextualNodeData>(.*?)</ContextualNodeData>', task_prompt, re.DOTALL)

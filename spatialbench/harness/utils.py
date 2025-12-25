@@ -104,9 +104,12 @@ def batch_download_datasets(uris: list[str], show_progress: bool = True):
         print(f"Downloaded/verified {len(uris)} dataset(s)")
         print()
 
-def setup_workspace(eval_id: str) -> Path:
+def setup_workspace(eval_id: str, run_id: str | None = None) -> Path:
     project_root = get_project_root()
-    work_dir = project_root / ".spatialbench" / "workspace" / eval_id
+    if run_id:
+        work_dir = project_root / ".spatialbench" / "workspace" / run_id / eval_id
+    else:
+        work_dir = project_root / ".spatialbench" / "workspace" / eval_id
 
     if work_dir.exists():
         import shutil

@@ -4,6 +4,7 @@ from spatialbench.graders.label_set import LabelSetJaccardGrader
 from spatialbench.graders.distribution import DistributionComparisonGrader
 from spatialbench.graders.marker_gene import MarkerGenePrecisionRecallGrader, MarkerGeneSeparationGrader
 from spatialbench.graders.spatial import SpatialAdjacencyGrader
+from spatialbench.graders.multiple_choice import MultipleChoiceGrader
 
 GRADER_REGISTRY = {
     "numeric_tolerance": NumericToleranceGrader,
@@ -12,6 +13,7 @@ GRADER_REGISTRY = {
     "marker_gene_precision_recall": MarkerGenePrecisionRecallGrader,
     "marker_gene_separation": MarkerGeneSeparationGrader,
     "spatial_adjacency": SpatialAdjacencyGrader,
+    "multiple_choice": MultipleChoiceGrader,
 }
 
 __all__ = [
@@ -23,5 +25,6 @@ __all__ = [
     "MarkerGenePrecisionRecallGrader",
     "MarkerGeneSeparationGrader",
     "SpatialAdjacencyGrader",
+    "MultipleChoiceGrader",
     "GRADER_REGISTRY",
 ]

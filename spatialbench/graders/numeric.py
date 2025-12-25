@@ -16,26 +16,44 @@ class NumericToleranceGrader(BinaryGrader):
                 continue
 
             actual_value = agent_answer[field]
+            if actual_value is None:
+                all_pass = False
+                failures.append(f"{field}: got null/None value")
+                metrics[f"{field}_actual"] = None
+                metrics[f"{field}_expected"] = expected_value
+                metrics[f"{field}_error"] = float('inf')
+                metrics[f"{field}_pass"] = False
+                continue
+
             tolerance_config = tolerances.get(field, {"type": "absolute", "value": 0})
             tolerance_type = tolerance_config.get("type", "absolute")
             tolerance_value = tolerance_config.get("value", 0)
 
-            if tolerance_type == "absolute":
-                within_tolerance = abs(actual_value - expected_value) <= tolerance_value
-                error = abs(actual_value - expected_value)
-            elif tolerance_type == "relative":
-                relative_error = abs(actual_value - expected_value) / abs(expected_value) if expected_value != 0 else float('inf')
-                within_tolerance = relative_error <= tolerance_value
-                error = relative_error
-            elif tolerance_type == "min":
-                within_tolerance = actual_value >= expected_value
-                error = expected_value - actual_value if actual_value < expected_value else 0
-            elif tolerance_type == "max":
-                within_tolerance = actual_value <= expected_value
-                error = actual_value - expected_value if actual_value > expected_value else 0
-            else:
-                within_tolerance = False
-                error = float('inf')
+            try:
+                if tolerance_type == "absolute":
+                    within_tolerance = abs(actual_value - expected_value) <= tolerance_value
+                    error = abs(actual_value - expected_value)
+                elif tolerance_type == "relative":
+                    relative_error = abs(actual_value - expected_value) / abs(expected_value) if expected_value != 0 else float('inf')
+                    within_tolerance = relative_error <= tolerance_value
+                    error = relative_error
+                elif tolerance_type == "min":
+                    within_tolerance = actual_value >= expected_value
+                    error = expected_value - actual_value if actual_value < expected_value else 0
+                elif tolerance_type == "max":
+                    within_tolerance = actual_value <= expected_value
+                    error = actual_value - expected_value if actual_value > expected_value else 0
+                else:
+                    within_tolerance = False
+                    error = float('inf')
+            except TypeError:
+                all_pass = False
+                failures.append(f"{field}: invalid type {type(actual_value).__name__}, expected numeric")
+                metrics[f"{field}_actual"] = actual_value
+                metrics[f"{field}_expected"] = expected_value
+                metrics[f"{field}_error"] = float('inf')
+                metrics[f"{field}_pass"] = False
+                continue
 
             metrics[f"{field}_actual"] = actual_value
             metrics[f"{field}_expected"] = expected_value
