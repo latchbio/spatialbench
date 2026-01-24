@@ -1,5 +1,5 @@
 from spatialbench.types import TestCase, TestResult, EvalResult
-from spatialbench.graders import BinaryGrader, GraderResult, GRADER_REGISTRY
+from eval_graders import BinaryGrader, GraderResult, GRADER_REGISTRY
 from spatialbench.harness import EvalRunner, run_minisweagent_task
 
 __version__ = "0.1.0"

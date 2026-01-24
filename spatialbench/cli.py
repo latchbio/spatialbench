@@ -339,7 +339,7 @@ def validate(eval_path):
 
         if "grader" in eval_data:
             grader_type = eval_data["grader"].get("type")
-            from spatialbench.graders import GRADER_REGISTRY
+            from eval_graders import GRADER_REGISTRY
 
             if grader_type not in GRADER_REGISTRY:
                 click.echo(f"❌ Unknown grader type: {grader_type}", err=True)

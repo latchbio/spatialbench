@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from spatialbench.types import TestCase, TestResult, EvalResult
-from spatialbench.graders import GRADER_REGISTRY
+from eval_graders import GRADER_REGISTRY
 from spatialbench.harness.utils import download_data, setup_workspace, cleanup_workspace
 
 class EvalRunner:
@@ -112,7 +112,7 @@ Example eval_answer.json:
                 try:
                     grader_result = grader.evaluate_answer(agent_answer, grader_config)
                 except Exception as e:
-                    from spatialbench.graders.base import GraderResult
+                    from eval_graders import GraderResult
                     import traceback
                     grader_result = GraderResult(
                         passed=False,
