@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -28,18 +29,21 @@ def run_plotsagent_task(
 
     output_file = work_dir / "eval_output.json"
 
-    harness_dir = Path("/root/latch-plots-eval-harness")
-    eval_script = harness_dir / "src" / "eval_server.py"
-    faas_python = Path("/root/plots-faas-venv/bin/python")
+    faas_python = Path(os.environ.get("PLOTS_FAAS_PYTHON", "/root/plots-faas-venv/bin/python"))
 
     cmd = [
         str(faas_python),
-        str(eval_script),
+        "-m", "latch_plots_eval_harness.eval_server",
         "--headless",
         "--no-notebook",
         "--eval", str(eval_file),
         "-o", str(output_file),
     ]
+
+    env = {
+        **os.environ,
+        "LATCH_PLOTS_FAAS_PATH": os.environ.get("LATCH_PLOTS_FAAS_PATH", "/root/latch-plots-faas"),
+    }
 
     start_time = time.time()
     timed_out = False
@@ -48,7 +52,7 @@ def run_plotsagent_task(
         with open(agent_log_file, "w") as log_f:
             subprocess.run(
                 cmd,
-                cwd=str(harness_dir),
+                env=env,
                 stdout=log_f,
                 stderr=subprocess.STDOUT,
                 timeout=eval_timeout,
