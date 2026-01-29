@@ -35,7 +35,6 @@ def run_plotsagent_task(
         str(faas_python),
         "-m", "latch_plots_eval_harness.eval_server",
         "--headless",
-        "--no-notebook",
         "--eval", str(eval_file),
         "-o", str(output_file),
     ]
