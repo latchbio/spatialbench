@@ -112,7 +112,7 @@ Grading configuration specifying how to evaluate the agent's answer.
 }
 ```
 
-See [graders.md](graders.md) for detailed grader documentation.
+See [eval-graders](https://github.com/latchbio/eval-graders) for detailed grader documentation.
 
 ### Timeout Fields (optional)
 

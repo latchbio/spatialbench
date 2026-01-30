@@ -105,7 +105,7 @@ Match your task to the appropriate grader:
 | Expression scores | MarkerGeneSeparation | `{"auroc": 0.85, "per_gene": [...]}` |
 | Spatial metrics | SpatialAdjacency | `{"median_dist": 18.5}` |
 
-See [graders.md](graders.md) for full documentation.
+See [eval-graders](https://github.com/latchbio/eval-graders) for full documentation.
 
 ### Step 5: Write Task Description
 
@@ -340,6 +340,6 @@ The 7 representative evaluations in this repository:
 
 - Study the 7 example evaluations for format and structure
 - Read [specification.md](specification.md) for technical format details
-- Read [graders.md](graders.md) for available grader types
+- See [eval-graders](https://github.com/latchbio/eval-graders) for available grader types
 - See [BENCHMARK_SCOPE.md](../BENCHMARK_SCOPE.md) for full benchmark information
 - Contact [kenny@latch.bio](mailto:kenny@latch.bio) to contribute to the full benchmark

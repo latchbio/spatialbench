@@ -85,7 +85,7 @@ Five grader families handle different answer types:
 | LabelSetJaccard | Cell type sets |
 | DistributionComparison | Cell type proportions |
 
-See [`spatialbench/graders/`](spatialbench/graders/) for implementations.
+See [eval-graders](https://github.com/latchbio/eval-graders) for implementations.
 
 ## Citation
 
