@@ -6,7 +6,7 @@ from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from spatialbench import EvalRunner, TestCase
-from spatialbench.harness import run_minisweagent_task, run_claudecode_task, batch_download_datasets
+from latch_eval_tools.harness import run_minisweagent_task, run_claudecode_task, batch_download_datasets
 
 def _run_single_eval(eval_file_path, agent, model, keep_workspace, run_id=None):
     eval_file = Path(eval_file_path)
@@ -339,7 +339,7 @@ def validate(eval_path):
 
         if "grader" in eval_data:
             grader_type = eval_data["grader"].get("type")
-            from eval_graders import GRADER_REGISTRY
+            from latch_eval_tools.graders import GRADER_REGISTRY
 
             if grader_type not in GRADER_REGISTRY:
                 click.echo(f"❌ Unknown grader type: {grader_type}", err=True)
