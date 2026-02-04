@@ -54,7 +54,7 @@ spatialbench validate evals_canonical/qc/xenium_xenium_qc_filter_min_umi_counts.
 
 # Run with mini-swe-agent
 export ANTHROPIC_API_KEY=your_key
-spatialbench run evals_canonical/qc/xenium_xenium_qc_filter_min_umi_counts.json --agent minisweagent
+spatialbench run evals_canonical/qc/xenium_xenium_qc_filter_min_umi_counts.json --agent minisweagent --model anthropic/claude-opus-4-5
 ```
 
 ### Custom Agent
