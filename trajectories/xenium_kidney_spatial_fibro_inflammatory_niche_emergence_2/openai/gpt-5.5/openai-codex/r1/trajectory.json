@@ -1,0 +1,394 @@
+[
+  {
+    "type": "thread.started",
+    "thread_id": "019dce86-b97a-72e0-b9f1-e971e9bcfea7"
+  },
+  {
+    "type": "turn.started"
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_0",
+      "type": "agent_message",
+      "text": "I\u2019ll inspect the data layout first, then choose markers from the genes actually present in the Xenium panel and compute the spatial kNN scores section by section so sections are not mixed."
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_1",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"find /workspace/data -maxdepth 3 -type f | sed 's#\"'^#/##'\"' | head -200\"",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_1",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"find /workspace/data -maxdepth 3 -type f | sed 's#\"'^#/##'\"' | head -200\"",
+      "aggregated_output": "//workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_2",
+      "type": "command_execution",
+      "command": "/bin/bash -lc 'ls -lh /workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_2",
+      "type": "command_execution",
+      "command": "/bin/bash -lc 'ls -lh /workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'",
+      "aggregated_output": "-rw-r--r-- 2 root root 106M Apr 27 10:40 /workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_3",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport h5py\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nwith h5py.File(p,'r') as f:\n    def visit(name,obj):\n        if name.count('/')<=2:\n            print(name, type(obj).__name__, getattr(obj,'shape',None), obj.attrs.get('encoding-type'))\n    f.visititems(visit)\nPY\"",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_3",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport h5py\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nwith h5py.File(p,'r') as f:\n    def visit(name,obj):\n        if name.count('/')<=2:\n            print(name, type(obj).__name__, getattr(obj,'shape',None), obj.attrs.get('encoding-type'))\n    f.visititems(visit)\nPY\"",
+      "aggregated_output": "X Group None csc_matrix\nX/data Dataset (3718892,) None\nX/indices Dataset (3718892,) None\nX/indptr Dataset (300,) None\nlayers Group None dict\nobs Group None dataframe\nobs/_index Dataset (100000,) string-array\nobs/ident Group None categorical\nobs/ident/categories Dataset (12,) string-array\nobs/ident/codes Dataset (100000,) array\nobs/n_counts Dataset (100000,) array\nobs/n_genes Dataset (100000,) array\nobs/region Group None categorical\nobs/region/categories Dataset (3,) string-array\nobs/region/codes Dataset (100000,) array\nobs/time Group None categorical\nobs/time/categories Dataset (6,) string-array\nobs/time/codes Dataset (100000,) array\nobs/x_centroid Dataset (100000,) array\nobs/y_centroid Dataset (100000,) array\nobsm Group None dict\nobsm/X_pca Dataset (100000, 50) array\nobsm/X_pca_harmony Dataset (100000, 50) array\nobsm/X_umap Dataset (100000, 2) array\nobsm/spatial Dataset (100000, 2) array\nobsp Group None dict\nraw Group None raw\nraw/X Group None csr_matrix\nraw/X/data Dataset (3718892,) None\nraw/X/indices Dataset (3718892,) None\nraw/X/indptr Dataset (100001,) None\nraw/var Group None dataframe\nraw/var/_index Dataset (299,) string-array\nraw/varm Group None dict\nuns Group None dict\nuns/ident_colors Dataset (12,) string-array\nuns/pca Group None dict\nuns/pca/params Group None dict\nuns/pca/variance Dataset (50,) array\nuns/pca/variance_ratio Dataset (50,) array\nuns/umap Group None dict\nuns/umap/params Group None dict\nvar Group None dataframe\nvar/_index Dataset (299,) string-array\nvarm Group None dict\nvarm/PCs Dataset (299, 50) array\nvarp Group None dict\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_4",
+      "type": "agent_message",
+      "text": "The file is a single 100k-cell `.h5ad` with 299 panel genes, time labels, regions, centroids, and spatial coordinates. I\u2019m checking the panel and metadata now to avoid using markers that are absent from the assay."
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_5",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad\nimport pandas as pd\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p, backed='r')\nprint('shape',adata.shape)\nprint('obs columns',adata.obs.columns.tolist())\nfor c in ['time','region','ident']:\n    print('\\\\n',c)\n    print(adata.obs[c].value_counts().sort_index())\nprint('\\\\nvar head', adata.var_names[:20].tolist())\nprint('var tail', adata.var_names[-20:].tolist())\nprint('obsm', adata.obsm.keys())\nprint('X type', type(adata.X), 'raw', adata.raw is not None)\nprint('spatial head')\nprint(adata.obsm['spatial'][:5])\nPY\"",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_5",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad\nimport pandas as pd\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p, backed='r')\nprint('shape',adata.shape)\nprint('obs columns',adata.obs.columns.tolist())\nfor c in ['time','region','ident']:\n    print('\\\\n',c)\n    print(adata.obs[c].value_counts().sort_index())\nprint('\\\\nvar head', adata.var_names[:20].tolist())\nprint('var tail', adata.var_names[-20:].tolist())\nprint('obsm', adata.obsm.keys())\nprint('X type', type(adata.X), 'raw', adata.raw is not None)\nprint('spatial head')\nprint(adata.obsm['spatial'][:5])\nPY\"",
+      "aggregated_output": "shape (100000, 299)\nobs columns ['x_centroid', 'y_centroid', 'n_genes', 'n_counts', 'ident', 'region', 'time']\n\n time\ntime\nDay2      16355\nDay14     17982\nHour4     15794\nHour12    15675\nSham      14347\nWeek6     19847\nName: count, dtype: int64\n\n region\nregion\nCortex    62808\nOM        15578\nIM        21614\nName: count, dtype: int64\n\n ident\nident\nShamL       8080\nShamR       6267\nHour4L      7451\nHour4R      8343\nHour12L     7703\nHour12R     7972\nDay2L       8310\nDay2R       8045\nDay14L      9516\nDay14R      8466\nWeek6L     10627\nWeek6R      9220\nName: count, dtype: int64\n\nvar head ['AC132407.1', 'Abcc3', 'Acmsd', 'Acot7', 'Acox1', 'Acox2', 'Acsm1', 'Acsm3', 'Acta2', 'Adamts16', 'Adgrl3', 'Adgrv1', 'Adh1', 'Agrp', 'Agt', 'Agtr1a', 'Akap12', 'Akr1b3', 'Aldh1a3', 'Aldh1l2']\nvar tail ['Tnfrsf11a', 'Tpm1', 'Trpm6', 'Trpv5', 'Tspan2', 'Umod', 'Upk1b', 'Utp20', 'Vcam1', 'Vegfa', 'Vegfb', 'Vegfc', 'Vegfd', 'Vmn1r18', 'Vnn1', 'Vtn', 'Vwf', 'Wif1', 'Wnk1', 'Wnt16']\nobsm KeysView(AxisArrays with keys: X_pca, X_pca_harmony, X_umap, spatial)\nX type <class 'anndata._core.sparse_dataset._CSCDataset'> raw True\nspatial head\n[[1627.15464808 1415.63034649]\n [ 955.48105066 4679.12016713]\n [2139.23688458  800.02054229]\n [4063.80873284 1009.56965505]\n [3713.58698893 2907.1539913 ]]\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_6",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p, backed='r')\nfor i,g in enumerate(adata.var_names):\n    print(g)\nPY\"",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_6",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p, backed='r')\nfor i,g in enumerate(adata.var_names):\n    print(g)\nPY\"",
+      "aggregated_output": "AC132407.1\nAbcc3\nAcmsd\nAcot7\nAcox1\nAcox2\nAcsm1\nAcsm3\nActa2\nAdamts16\nAdgrl3\nAdgrv1\nAdh1\nAgrp\nAgt\nAgtr1a\nAkap12\nAkr1b3\nAldh1a3\nAldh1l2\nAmph\nAno1\nAno4\nAplnr\nAqp1\nAqp2\nAqp4\nAqp6\nAtp6v1c2\nAvpr2\nBcat1\nBdh1\nBmp4\nBmp6\nBmpr1a\nBmpr1b\nBmpr2\nBst1\nC3\nCacna1c\nCacna1e\nCalb1\nCalm1\nCalm2\nCalm3\nCalr\nCasr\nCcl7\nCcl8\nCcr1\nCcr4\nCcrl2\nCd24a\nCd44\nCd53\nCd74\nCdkn1c\nCgref1\nCldn16\nClec14a\nClec1a\nClnk\nCndp2\nCntn5\nCol18a1\nCol1a1\nCol1a2\nCol5a2\nCol6a1\nCoro2b\nCpt2\nCsf1\nCsf1r\nCtnna3\nCwh43\nCxcl1\nCxcl12\nCyp24a1\nCyp2e1\nCyp4b1\nCyp7b1\nDclk1\nDdn\nDkk2\nDll3\nDll4\nDmrt2\nDpp4\nEfnb1\nEfnb2\nEgf\nEgfem1\nEgfl7\nEhd3\nElf5\nEln\nEmcn\nEmx1\nEnox1\nEpcam\nEpha4\nEpha6\nEphb2\nEphb4\nEpo\nEpor\nErbb4\nFam189a1\nFam221a\nFbln1\nFgf1\nFgf13\nFgfr4\nFlt4\nFosl1\nFoxi1\nFst\nFyb\nGabrb3\nGimap5\nGja5\nGlp1r\nGpc6\nGprc5a\nGrap\nGrem2\nGsta1\nHaao\nHavcr1\nHgf\nHmgcll1\nHmgcs2\nHnf4a\nHyal2\nIcam2\nIdo2\nIl2\nIl2ra\nIl2rb\nIl34\nInha\nInhba\nInmt\nJag1\nKcnc3\nKcnd2\nKcnip1\nKcnma1\nKcnmb2\nKcnq3\nKcnt1\nKdr\nKl\nKlf2\nKlf5\nKmo\nKng1\nKrt14\nKrt15\nKrt19\nKrt20\nKrt5\nKynu\nLair1\nLingo2\nLrp6\nMapk10\nMcam\nMgp\nMki67\nMmp2\nMrc2\nMro\nMsln\nMuc20\nMyct1\nMyh11\nMyl9\nMyom2\nNalcn\nNgf\nNkx3-1\nNlgn1\nNos3\nNotch1\nNotch3\nNphs2\nNpr1\nNrg1\nNrip3\nNrp1\nNrp2\nNrxn3\nNtng1\nOsm\nOsmr\nPalmd\nPappa2\nPapss2\nPde3a\nPgf\nPi16\nPlau\nPlcxd3\nPlin2\nPlxnd1\nPodxl\nPpara\nPrkcg\nPrkch\nProser2\nPtger1\nPtger3\nPtgfr\nPtgs2\nPtpro\nQprt\nRbm20\nRen1\nRhbg\nRims2\nRnf24\nRunx1\nS1pr1\nSall3\nScara5\nScnn1g\nSdc2\nSema3d\nSema3g\nSema6a\nSerpine1\nSerpine2\nSfrp1\nSgcz\nShd\nSlc12a1\nSlc12a3\nSlc13a3\nSlc14a2\nSlc22a19\nSlc22a22\nSlc22a6\nSlc22a8\nSlc26a4\nSlc2a9\nSlc4a1\nSlc4a9\nSlc5a12\nSlc5a2\nSlc5a3\nSlc5a8\nSlc6a15\nSlc6a19\nSlc7a12\nSlc7a13\nSlc7a8\nSlc7a9\nSlc9a3r2\nSlco4a1\nSmoc2\nSorcs3\nSost\nSpink1\nSpon1\nSpp1\nSpp2\nStap1\nSynpo\nTagln\nTgfb1\nTgfb2\nTgfbr3\nTiam1\nTimp3\nTimp4\nTmem207\nTmigd1\nTnf\nTnfrsf11a\nTpm1\nTrpm6\nTrpv5\nTspan2\nUmod\nUpk1b\nUtp20\nVcam1\nVegfa\nVegfb\nVegfc\nVegfd\nVmn1r18\nVnn1\nVtn\nVwf\nWif1\nWnk1\nWnt16\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_7",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad\nimport numpy as np\nfrom scipy import sparse\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p)\nprint(type(adata.X), adata.X.shape)\nfor name,M in [('X',adata.X),('raw',adata.raw.X)]:\n    data=M.data if sparse.issparse(M) else np.asarray(M).ravel()\n    print(name, 'dtype', data.dtype, 'min/max', data.min(), data.max(), 'sample uniq <=20', np.unique(data[:10000])[:20], 'nnz', len(data))\nprint('obs n_counts summary', np.percentile(adata.obs['n_counts'], [0,1,5,25,50,75,95,99,100]))\nPY\"",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_7",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad\nimport numpy as np\nfrom scipy import sparse\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p)\nprint(type(adata.X), adata.X.shape)\nfor name,M in [('X',adata.X),('raw',adata.raw.X)]:\n    data=M.data if sparse.issparse(M) else np.asarray(M).ravel()\n    print(name, 'dtype', data.dtype, 'min/max', data.min(), data.max(), 'sample uniq <=20', np.unique(data[:10000])[:20], 'nnz', len(data))\nprint('obs n_counts summary', np.percentile(adata.obs['n_counts'], [0,1,5,25,50,75,95,99,100]))\nPY\"",
+      "aggregated_output": "<class 'scipy.sparse._csc.csc_matrix'> (100000, 299)\nX dtype float32 min/max 0.11904646 4.366631 sample uniq <=20 [0.14689112 0.14842    0.15020682 0.15134563 0.15559264 0.15706189\n 0.1590647  0.16111934 0.16190362 0.16818053 0.1690354  0.1722459\n 0.17344388 0.17404915 0.17435339 0.17496505 0.17904823 0.17969343\n 0.18034332 0.18198884] nnz 3718892\nraw dtype int32 min/max 1 128 sample uniq <=20 [ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20] nnz 3718892\nobs n_counts summary [  8.    10.    15.95  44.    99.   176.   311.   418.   791.  ]\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_8",
+      "type": "agent_message",
+      "text": "The panel does not contain the usual broad markers like `Ptprc`, `Lyz2`, `Cd68`, `Dcn`, or `Pdgfra`, so I\u2019m using the kidney Xenium panel\u2019s available alternatives rather than importing markers from a different assay. Next I\u2019m testing how strict marker calls behave before fixing the final thresholds."
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_9",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad, numpy as np, pandas as pd\nfrom scipy import sparse\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p)\ngenes=list(adata.var_names); gi={g:i for i,g in enumerate(genes)}\nraw=adata.raw.X.tocsr()\nsets={\n'fib_core':['Col1a1','Col1a2','Col5a2','Col6a1','Fbln1','Mmp2','Mrc2','Pi16','Sfrp1','Smoc2'],\n'fib_col':['Col1a1','Col1a2','Col5a2','Col6a1'],\n'fib_specific':['Col1a1','Col1a2','Col5a2','Fbln1','Mmp2','Mrc2','Pi16'],\n'imm_core':['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2','Cd74','Bst1','Runx1'],\n'imm_specific':['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2'],\n'imm_broad':['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2','Cd74','Bst1','Runx1','Ccl7','Ccl8','Il2ra','Il2rb','Tnf','Osm'],\n}\nprint('marker present:')\nfor n,s in sets.items(): print(n, [g for g in s if g in gi])\nobs=adata.obs.copy()\ntime_order=['Sham','Hour4','Hour12','Day2','Day14','Week6']\nfor n,s in sets.items():\n    idx=[gi[g] for g in s if g in gi]\n    M=raw[:,idx]\n    expr=(M>0)\n    score=np.asarray(M.sum(axis=1)).ravel()\n    ng=np.asarray(expr.sum(axis=1)).ravel()\n    print('\\\\nSET',n,'nmarkers',len(idx),'score pos',np.mean(score>0),'ng>=2',np.mean(ng>=2),'ng>=3',np.mean(ng>=3))\n    df=pd.DataFrame({'time':obs.time.astype(str).values,'pos':score>0,'ng2':ng>=2,'ng3':ng>=3,'score':score})\n    print(df.groupby('time')[['pos','ng2','ng3','score']].mean().loc[time_order])\nPY\"",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_9",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad, numpy as np, pandas as pd\nfrom scipy import sparse\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p)\ngenes=list(adata.var_names); gi={g:i for i,g in enumerate(genes)}\nraw=adata.raw.X.tocsr()\nsets={\n'fib_core':['Col1a1','Col1a2','Col5a2','Col6a1','Fbln1','Mmp2','Mrc2','Pi16','Sfrp1','Smoc2'],\n'fib_col':['Col1a1','Col1a2','Col5a2','Col6a1'],\n'fib_specific':['Col1a1','Col1a2','Col5a2','Fbln1','Mmp2','Mrc2','Pi16'],\n'imm_core':['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2','Cd74','Bst1','Runx1'],\n'imm_specific':['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2'],\n'imm_broad':['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2','Cd74','Bst1','Runx1','Ccl7','Ccl8','Il2ra','Il2rb','Tnf','Osm'],\n}\nprint('marker present:')\nfor n,s in sets.items(): print(n, [g for g in s if g in gi])\nobs=adata.obs.copy()\ntime_order=['Sham','Hour4','Hour12','Day2','Day14','Week6']\nfor n,s in sets.items():\n    idx=[gi[g] for g in s if g in gi]\n    M=raw[:,idx]\n    expr=(M>0)\n    score=np.asarray(M.sum(axis=1)).ravel()\n    ng=np.asarray(expr.sum(axis=1)).ravel()\n    print('\\\\nSET',n,'nmarkers',len(idx),'score pos',np.mean(score>0),'ng>=2',np.mean(ng>=2),'ng>=3',np.mean(ng>=3))\n    df=pd.DataFrame({'time':obs.time.astype(str).values,'pos':score>0,'ng2':ng>=2,'ng3':ng>=3,'score':score})\n    print(df.groupby('time')[['pos','ng2','ng3','score']].mean().loc[time_order])\nPY\"",
+      "aggregated_output": "marker present:\nfib_core ['Col1a1', 'Col1a2', 'Col5a2', 'Col6a1', 'Fbln1', 'Mmp2', 'Mrc2', 'Pi16', 'Sfrp1', 'Smoc2']\nfib_col ['Col1a1', 'Col1a2', 'Col5a2', 'Col6a1']\nfib_specific ['Col1a1', 'Col1a2', 'Col5a2', 'Fbln1', 'Mmp2', 'Mrc2', 'Pi16']\nimm_core ['Cd53', 'Csf1r', 'Fyb', 'Gimap5', 'Grap', 'Lair1', 'Ccr1', 'Ccr4', 'Ccrl2', 'Cd74', 'Bst1', 'Runx1']\nimm_specific ['Cd53', 'Csf1r', 'Fyb', 'Gimap5', 'Grap', 'Lair1', 'Ccr1', 'Ccr4', 'Ccrl2']\nimm_broad ['Cd53', 'Csf1r', 'Fyb', 'Gimap5', 'Grap', 'Lair1', 'Ccr1', 'Ccr4', 'Ccrl2', 'Cd74', 'Bst1', 'Runx1', 'Ccl7', 'Ccl8', 'Il2ra', 'Il2rb', 'Tnf', 'Osm']\n\nSET fib_core nmarkers 10 score pos 0.50629 ng>=2 0.2753 ng>=3 0.15533\n             pos       ng2       ng3     score\ntime                                          \nSham    0.304454  0.115216  0.045445  1.039242\nHour4   0.362289  0.129480  0.045840  0.919083\nHour12  0.312600  0.103668  0.036810  0.672982\nDay2    0.695384  0.433201  0.254234  4.052767\nDay14   0.731676  0.498387  0.327049  5.056501\nWeek6   0.559732  0.310374  0.178415  2.792362\n\nSET fib_col nmarkers 4 score pos 0.37323 ng>=2 0.16151 ng>=3 0.0469\n             pos       ng2       ng3     score\ntime                                          \nSham    0.174113  0.039799  0.004879  0.351641\nHour4   0.222173  0.045650  0.004875  0.425225\nHour12  0.190367  0.043254  0.007400  0.344561\nDay2    0.619199  0.326934  0.111831  3.028432\nDay14   0.596207  0.324157  0.107218  2.986486\nWeek6   0.377085  0.151408  0.033758  1.208394\n\nSET fib_specific nmarkers 7 score pos 0.44139 ng>=2 0.22581 ng>=3 0.12124\n             pos       ng2       ng3     score\ntime                                          \nSham    0.231128  0.077089  0.030529  0.537464\nHour4   0.296568  0.091300  0.029505  0.632772\nHour12  0.257927  0.079872  0.028836  0.533461\nDay2    0.668053  0.396331  0.218404  3.752064\nDay14   0.670504  0.425203  0.257035  3.982427\nWeek6   0.459163  0.234443  0.129692  1.823601\n\nSET imm_core nmarkers 12 score pos 0.54665 ng>=2 0.23132 ng>=3 0.09688\n             pos       ng2       ng3     score\ntime                                          \nSham    0.391929  0.118910  0.038614  1.296508\nHour4   0.506585  0.179435  0.057554  1.588198\nHour12  0.495821  0.187049  0.065837  1.575821\nDay2    0.441761  0.176521  0.075940  1.467135\nDay14   0.792014  0.433378  0.216550  5.612446\nWeek6   0.594649  0.250920  0.103643  2.636721\n\nSET imm_specific nmarkers 9 score pos 0.28858 ng>=2 0.08474 ng>=3 0.0349\n             pos       ng2       ng3     score\ntime                                          \nSham    0.236077  0.041402  0.009967  0.447550\nHour4   0.266114  0.051095  0.016968  0.494365\nHour12  0.223668  0.056013  0.021882  0.429346\nDay2    0.242495  0.078692  0.037236  0.628554\nDay14   0.421699  0.171227  0.076187  1.274385\nWeek6   0.313045  0.092155  0.038142  0.770948\n\nSET imm_broad nmarkers 18 score pos 0.56269 ng>=2 0.2515 ng>=3 0.11199\n             pos       ng2       ng3     score\ntime                                          \nSham    0.414372  0.135220  0.045933  1.354011\nHour4   0.529062  0.200456  0.068380  1.667215\nHour12  0.513046  0.205423  0.078150  1.655056\nDay2    0.456619  0.190278  0.085050  1.584164\nDay14   0.802080  0.467579  0.251362  5.857191\nWeek6   0.606389  0.267244  0.117096  2.751096\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_10",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"find /workspace -maxdepth 3 -type f | sed 's#\"'^#/##'\"' | sort | head -500\"",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_10",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"find /workspace -maxdepth 3 -type f | sed 's#\"'^#/##'\"' | sort | head -500\"",
+      "aggregated_output": "//workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_11",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"cat <<'PY' > /tmp/explore_coloc.py\nimport anndata as ad\nimport numpy as np, pandas as pd\nfrom scipy import sparse\nfrom sklearn.neighbors import NearestNeighbors\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p)\nraw=adata.raw.X.tocsr()\ngenes=list(adata.var_names); gi={g:i for i,g in enumerate(genes)}\nobs=adata.obs.copy()\ntime_order=['Sham','Hour4','Hour12','Day2','Day14','Week6']\nsection_col='ident'\ncoord=np.asarray(adata.obsm['spatial'])\nmarker_sets={\n'A': {\n 'fib':['Col1a1','Col1a2','Col5a2','Col6a1','Fbln1','Mmp2','Mrc2','Pi16','Sfrp1','Smoc2'],\n 'imm':['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2','Cd74','Bst1','Runx1']},\n'B_specific': {\n 'fib':['Col1a1','Col1a2','Col5a2','Fbln1','Mmp2','Mrc2','Pi16'],\n 'imm':['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2']},\n'C_common': {\n 'fib':['Col1a1','Col1a2','Col5a2','Col6a1'],\n 'imm':['Cd53','Csf1r','Cd74','Fyb','Lair1','Ccr1','Ccr4','Ccrl2']},\n'D_broad': {\n 'fib':['Col1a1','Col1a2','Col5a2','Col6a1','Fbln1','Mmp2','Mrc2','Pi16','Sfrp1','Smoc2','Acta2','Tagln','Myl9','Mgp'],\n 'imm':['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2','Cd74','Bst1','Runx1','Ccl7','Ccl8','Il2ra','Il2rb','Tnf','Osm']},\n'E_verycore': {\n 'fib':['Col1a1','Col1a2','Fbln1','Mmp2','Mrc2','Pi16'],\n 'imm':['Cd53','Csf1r','Fyb','Lair1','Ccr1','Ccrl2']},\n}\n\ndef call(markers, min_genes=1, min_counts=1):\n    idx=[gi[g] for g in markers if g in gi]\n    M=raw[:,idx]\n    ng=np.asarray((M>0).sum(axis=1)).ravel()\n    sc=np.asarray(M.sum(axis=1)).ravel()\n    return (ng>=min_genes) & (sc>=min_counts)\n\ndef knn_score(target,k=10):\n    scores=np.zeros(adata.n_obs, dtype=np.float32)\n    for sec, ix in obs.groupby(section_col, observed=True).indices.items():\n        ix=np.asarray(ix)\n        n=len(ix)\n        kk=min(k+1,n)\n        nbrs=NearestNeighbors(n_neighbors=kk, algorithm='kd_tree').fit(coord[ix])\n        ind=nbrs.kneighbors(return_distance=False)\n        # exclude self if first, but safer remove local index per row\n        vals=[]\n        tar=target[ix]\n        s=np.empty(n, dtype=np.float32)\n        for r,row in enumerate(ind):\n            neigh=row[row\"'!=r]\n            if len(neigh)>k: neigh=neigh[:k]\n            s[r]=tar[neigh].mean() if len(neigh) else np.nan\n        scores[ix]=s\n    return scores\n\ndef opposite_score(fib,imm,k=10, nontarget='\"'zero'):\n    scores=np.zeros(adata.n_obs, dtype=np.float32)\n    if nontarget=='nan': scores[:]=np.nan\n    for sec, ix in obs.groupby(section_col, observed=True).indices.items():\n        ix=np.asarray(ix); n=len(ix); kk=min(k+1,n)\n        nbrs=NearestNeighbors(n_neighbors=kk, algorithm='kd_tree').fit(coord[ix])\n        ind=nbrs.kneighbors(return_distance=False)\n        f=fib[ix]; im=imm[ix]\n        for r,row in enumerate(ind):\n            neigh=row[row\"'!=r]\n            if len(neigh)>k: neigh=neigh[:k]\n            if f[r] and not im[r]: scores[ix[r]]=im[neigh].mean()\n            elif im[r] and not f[r]: scores[ix[r]]=f[neigh].mean()\n            elif f[r] and im[r]: scores[ix[r]]=(im[neigh].mean()+f[neigh].mean())/2\n    return scores\n\nfor name,sets in marker_sets.items():\n  for mg in [1,2,3]:\n    fib=call(sets['\"'fib'],mg); imm=call(sets['imm'],mg); target=fib|imm\n    print('\\\\n',name,'min_genes',mg,'fib%',fib.mean(),'imm%',imm.mean(),'target%',target.mean(),'overlap%',(fib&imm).mean())\n    for k in [6,10,15,20,30]:\n      sc=knn_score(target,k)\n      means=pd.Series(sc).groupby(obs.time.astype(str).values).mean().loc[time_order]\n      print('k',k,'union means',dict(zip(time_order, means.round(6))), 'fold', means['Day14']/means['Sham'], 'peak', np.argmax(means.values))\n    # only do one k opposite\n    sc=opposite_score(fib,imm,10,nontarget='zero')\n    means=pd.Series(sc).groupby(obs.time.astype(str).values).mean().loc[time_order]\n    print('opp_zero k10', dict(zip(time_order, means.round(6))), 'fold', means['Day14']/means['Sham'], 'peak', np.argmax(means.values))\n    sc=opposite_score(fib,imm,10,nontarget='nan')\n    means=pd.Series(sc).groupby(obs.time.astype(str).values).mean().loc[time_order]\n    print('opp_targetonly k10', dict(zip(time_order, means.round(6))), 'fold', means['Day14']/means['Sham'], 'peak', np.argmax(means.values))\nPY\npython /tmp/explore_coloc.py\"",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_11",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"cat <<'PY' > /tmp/explore_coloc.py\nimport anndata as ad\nimport numpy as np, pandas as pd\nfrom scipy import sparse\nfrom sklearn.neighbors import NearestNeighbors\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p)\nraw=adata.raw.X.tocsr()\ngenes=list(adata.var_names); gi={g:i for i,g in enumerate(genes)}\nobs=adata.obs.copy()\ntime_order=['Sham','Hour4','Hour12','Day2','Day14','Week6']\nsection_col='ident'\ncoord=np.asarray(adata.obsm['spatial'])\nmarker_sets={\n'A': {\n 'fib':['Col1a1','Col1a2','Col5a2','Col6a1','Fbln1','Mmp2','Mrc2','Pi16','Sfrp1','Smoc2'],\n 'imm':['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2','Cd74','Bst1','Runx1']},\n'B_specific': {\n 'fib':['Col1a1','Col1a2','Col5a2','Fbln1','Mmp2','Mrc2','Pi16'],\n 'imm':['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2']},\n'C_common': {\n 'fib':['Col1a1','Col1a2','Col5a2','Col6a1'],\n 'imm':['Cd53','Csf1r','Cd74','Fyb','Lair1','Ccr1','Ccr4','Ccrl2']},\n'D_broad': {\n 'fib':['Col1a1','Col1a2','Col5a2','Col6a1','Fbln1','Mmp2','Mrc2','Pi16','Sfrp1','Smoc2','Acta2','Tagln','Myl9','Mgp'],\n 'imm':['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2','Cd74','Bst1','Runx1','Ccl7','Ccl8','Il2ra','Il2rb','Tnf','Osm']},\n'E_verycore': {\n 'fib':['Col1a1','Col1a2','Fbln1','Mmp2','Mrc2','Pi16'],\n 'imm':['Cd53','Csf1r','Fyb','Lair1','Ccr1','Ccrl2']},\n}\n\ndef call(markers, min_genes=1, min_counts=1):\n    idx=[gi[g] for g in markers if g in gi]\n    M=raw[:,idx]\n    ng=np.asarray((M>0).sum(axis=1)).ravel()\n    sc=np.asarray(M.sum(axis=1)).ravel()\n    return (ng>=min_genes) & (sc>=min_counts)\n\ndef knn_score(target,k=10):\n    scores=np.zeros(adata.n_obs, dtype=np.float32)\n    for sec, ix in obs.groupby(section_col, observed=True).indices.items():\n        ix=np.asarray(ix)\n        n=len(ix)\n        kk=min(k+1,n)\n        nbrs=NearestNeighbors(n_neighbors=kk, algorithm='kd_tree').fit(coord[ix])\n        ind=nbrs.kneighbors(return_distance=False)\n        # exclude self if first, but safer remove local index per row\n        vals=[]\n        tar=target[ix]\n        s=np.empty(n, dtype=np.float32)\n        for r,row in enumerate(ind):\n            neigh=row[row\"'!=r]\n            if len(neigh)>k: neigh=neigh[:k]\n            s[r]=tar[neigh].mean() if len(neigh) else np.nan\n        scores[ix]=s\n    return scores\n\ndef opposite_score(fib,imm,k=10, nontarget='\"'zero'):\n    scores=np.zeros(adata.n_obs, dtype=np.float32)\n    if nontarget=='nan': scores[:]=np.nan\n    for sec, ix in obs.groupby(section_col, observed=True).indices.items():\n        ix=np.asarray(ix); n=len(ix); kk=min(k+1,n)\n        nbrs=NearestNeighbors(n_neighbors=kk, algorithm='kd_tree').fit(coord[ix])\n        ind=nbrs.kneighbors(return_distance=False)\n        f=fib[ix]; im=imm[ix]\n        for r,row in enumerate(ind):\n            neigh=row[row\"'!=r]\n            if len(neigh)>k: neigh=neigh[:k]\n            if f[r] and not im[r]: scores[ix[r]]=im[neigh].mean()\n            elif im[r] and not f[r]: scores[ix[r]]=f[neigh].mean()\n            elif f[r] and im[r]: scores[ix[r]]=(im[neigh].mean()+f[neigh].mean())/2\n    return scores\n\nfor name,sets in marker_sets.items():\n  for mg in [1,2,3]:\n    fib=call(sets['\"'fib'],mg); imm=call(sets['imm'],mg); target=fib|imm\n    print('\\\\n',name,'min_genes',mg,'fib%',fib.mean(),'imm%',imm.mean(),'target%',target.mean(),'overlap%',(fib&imm).mean())\n    for k in [6,10,15,20,30]:\n      sc=knn_score(target,k)\n      means=pd.Series(sc).groupby(obs.time.astype(str).values).mean().loc[time_order]\n      print('k',k,'union means',dict(zip(time_order, means.round(6))), 'fold', means['Day14']/means['Sham'], 'peak', np.argmax(means.values))\n    # only do one k opposite\n    sc=opposite_score(fib,imm,10,nontarget='zero')\n    means=pd.Series(sc).groupby(obs.time.astype(str).values).mean().loc[time_order]\n    print('opp_zero k10', dict(zip(time_order, means.round(6))), 'fold', means['Day14']/means['Sham'], 'peak', np.argmax(means.values))\n    sc=opposite_score(fib,imm,10,nontarget='nan')\n    means=pd.Series(sc).groupby(obs.time.astype(str).values).mean().loc[time_order]\n    print('opp_targetonly k10', dict(zip(time_order, means.round(6))), 'fold', means['Day14']/means['Sham'], 'peak', np.argmax(means.values))\nPY\npython /tmp/explore_coloc.py\"",
+      "aggregated_output": "\n A min_genes 1 fib% 0.50629 imm% 0.54665 target% 0.7262 overlap% 0.32674\nk 6 union means {'Sham': 0.5524849891662598, 'Hour4': 0.6567260026931763, 'Hour12': 0.6309090256690979, 'Day2': 0.7982059717178345, 'Day14': 0.9036170244216919, 'Week6': 0.7705870270729065} fold 1.63555 peak 4\nk 10 union means {'Sham': 0.55240797996521, 'Hour4': 0.6557930111885071, 'Hour12': 0.6310999989509583, 'Day2': 0.7965390086174011, 'Day14': 0.9044489860534668, 'Week6': 0.7705199718475342} fold 1.6372837 peak 4\nk 15 union means {'Sham': 0.5510879755020142, 'Hour4': 0.6552619934082031, 'Hour12': 0.6310520172119141, 'Day2': 0.7969269752502441, 'Day14': 0.9045010209083557, 'Week6': 0.7706660032272339} fold 1.6412985 peak 4\nk 20 union means {'Sham': 0.5507280230522156, 'Hour4': 0.6546760201454163, 'Hour12': 0.6305450201034546, 'Day2': 0.7955700159072876, 'Day14': 0.9050379991531372, 'Week6': 0.7698389887809753} fold 1.6433481 peak 4\nk 30 union means {'Sham': 0.5509819984436035, 'Hour4': 0.65420001745224, 'Hour12': 0.6302440166473389, 'Day2': 0.795868992805481, 'Day14': 0.9048399925231934, 'Week6': 0.7693859934806824} fold 1.6422325 peak 4\nopp_zero k10 {'Sham': 0.18853400647640228, 'Hour4': 0.270796000957489, 'Hour12': 0.2368520051240921, 'Day2': 0.4247319996356964, 'Day14': 0.6894450187683105, 'Week6': 0.45307600498199463} fold 3.6568694 peak 4\nopp_targetonly k10 {'Sham': 0.3422189950942993, 'Hour4': 0.41411200165748596, 'Hour12': 0.3760409951210022, 'Day2': 0.5332390069961548, 'Day14': 0.7622720003128052, 'Week6': 0.5906599760055542} fold 2.2274396 peak 4\n\n A min_genes 2 fib% 0.2753 imm% 0.23132 target% 0.39677 overlap% 0.10985\nk 6 union means {'Sham': 0.20980000495910645, 'Hour4': 0.26753801107406616, 'Hour12': 0.2589370012283325, 'Day2': 0.5055440068244934, 'Day14': 0.6419939994812012, 'Week6': 0.4381850063800812} fold 3.0600283 peak 4\nk 10 union means {'Sham': 0.20841999351978302, 'Hour4': 0.26742398738861084, 'Hour12': 0.26003798842430115, 'Day2': 0.5039870142936707, 'Day14': 0.6414030194282532, 'Week6': 0.4374310076236725} fold 3.0774539 peak 4\nk 15 union means {'Sham': 0.20766699314117432, 'Hour4': 0.26780200004577637, 'Hour12': 0.25970399379730225, 'Day2': 0.5033980011940002, 'Day14': 0.6410670280456543, 'Week6': 0.4369960129261017} fold 3.0869935 peak 4\nk 20 union means {'Sham': 0.20694899559020996, 'Hour4': 0.26689600944519043, 'Hour12': 0.25944799184799194, 'Day2': 0.5021679997444153, 'Day14': 0.6417359709739685, 'Week6': 0.4363250136375427} fold 3.1009362 peak 4\nk 30 union means {'Sham': 0.20757900178432465, 'Hour4': 0.2661370038986206, 'Hour12': 0.2588390111923218, 'Day2': 0.5025500059127808, 'Day14': 0.6413400173187256, 'Week6': 0.43550801277160645} fold 3.089619 peak 4\nopp_zero k10 {'Sham': 0.02691899985074997, 'Hour4': 0.041763000190258026, 'Hour12': 0.03465399891138077, 'Day2': 0.12843500077724457, 'Day14': 0.3198559880256653, 'Week6': 0.13708600401878357} fold 11.882375 peak 4\nopp_targetonly k10 {'Sham': 0.12912100553512573, 'Hour4': 0.15667499601840973, 'Hour12': 0.1330070048570633, 'Day2': 0.25492098927497864, 'Day14': 0.49819400906562805, 'Week6': 0.3161090016365051} fold 3.858359 peak 4\n\n A min_genes 3 fib% 0.15533 imm% 0.09688 target% 0.21073 overlap% 0.04148\nk 6 union means {'Sham': 0.07830899953842163, 'Hour4': 0.09406500309705734, 'Hour12': 0.09533199667930603, 'Day2': 0.2937740087509155, 'Day14': 0.4153600037097931, 'Week6': 0.2383899986743927} fold 5.3041096 peak 4\nk 10 union means {'Sham': 0.07736799865961075, 'Hour4': 0.09359300136566162, 'Hour12': 0.09503000229597092, 'Day2': 0.29352501034736633, 'Day14': 0.41629400849342346, 'Week6': 0.23717400431632996} fold 5.3806953 peak 4\nk 15 union means {'Sham': 0.0771540030837059, 'Hour4': 0.09388799965381622, 'Hour12': 0.09525100141763687, 'Day2': 0.2925179898738861, 'Day14': 0.4164609909057617, 'Week6': 0.23705999553203583} fold 5.3977637 peak 4\nk 20 union means {'Sham': 0.07709299772977829, 'Hour4': 0.09346000105142593, 'Hour12': 0.09524399787187576, 'Day2': 0.29250699281692505, 'Day14': 0.416469007730484, 'Week6': 0.2364339977502823} fold 5.4021826 peak 4\nk 30 union means {'Sham': 0.07669699937105179, 'Hour4': 0.09334799647331238, 'Hour12': 0.09499400109052658, 'Day2': 0.2928749918937683, 'Day14': 0.4160749912261963, 'Week6': 0.23556500673294067} fold 5.4249487 peak 4\nopp_zero k10 {'Sham': 0.004046000074595213, 'Hour4': 0.006372999865561724, 'Hour12': 0.004863999783992767, 'Day2': 0.03844999894499779, 'Day14': 0.1250469982624054, 'Week6': 0.04005099833011627} fold 30.905312 peak 4\nopp_targetonly k10 {'Sham': 0.05197000131011009, 'Hour4': 0.0676409974694252, 'Hour12': 0.05049699917435646, 'Day2': 0.13076500594615936, 'Day14': 0.29953399300575256, 'Week6': 0.17124100029468536} fold 5.7636385 peak 4\n\n B_specific min_genes 1 fib% 0.44139 imm% 0.28858 target% 0.56484 overlap% 0.16513\nk 6 union means {'Sham': 0.3993169963359833, 'Hour4': 0.4699249863624573, 'Hour12': 0.40683698654174805, 'Day2': 0.7210839986801147, 'Day14': 0.7557460069656372, 'Week6': 0.5932379961013794} fold 1.8925982 peak 4\nk 10 union means {'Sham': 0.399150013923645, 'Hour4': 0.46871599555015564, 'Hour12': 0.40856799483299255, 'Day2': 0.7192479968070984, 'Day14': 0.7557500004768372, 'Week6': 0.5927900075912476} fold 1.8934007 peak 4\nk 15 union means {'Sham': 0.39810898900032043, 'Hour4': 0.4684480130672455, 'Hour12': 0.40762999653816223, 'Day2': 0.7196660041809082, 'Day14': 0.7554069757461548, 'Week6': 0.5928120017051697} fold 1.8974894 peak 4\nk 20 union means {'Sham': 0.39751899242401123, 'Hour4': 0.4676710069179535, 'Hour12': 0.4068929851055145, 'Day2': 0.7177990078926086, 'Day14': 0.7555029988288879, 'Week6': 0.5918580293655396} fold 1.9005467 peak 4\nk 30 union means {'Sham': 0.3971650004386902, 'Hour4': 0.46692800521850586, 'Hour12': 0.40607601404190063, 'Day2': 0.7181209921836853, 'Day14': 0.7546529769897461, 'Week6': 0.590857982635498} fold 1.9000967 peak 4\nopp_zero k10 {'Sham': 0.09307900071144104, 'Hour4': 0.12780499458312988, 'Hour12': 0.09628699719905853, 'Day2': 0.24152199923992157, 'Day14': 0.3935439884662628, 'Week6': 0.2282329946756363} fold 4.228073 peak 4\nopp_targetonly k10 {'Sham': 0.23391099274158478, 'Hour4': 0.2737390100955963, 'Hour12': 0.23716199398040771, 'Day2': 0.3356359899044037, 'Day14': 0.5209199786186218, 'Week6': 0.3877210021018982} fold 2.226998 peak 4\n\n B_specific min_genes 2 fib% 0.22581 imm% 0.08474 target% 0.26635 overlap% 0.0442\nk 6 union means {'Sham': 0.1100350022315979, 'Hour4': 0.1308719962835312, 'Hour12': 0.1252630054950714, 'Day2': 0.42566001415252686, 'Day14': 0.47669899463653564, 'Week6': 0.28326699137687683} fold 4.332263 peak 4\nk 10 union means {'Sham': 0.10880299657583237, 'Hour4': 0.1299230009317398, 'Hour12': 0.12574799358844757, 'Day2': 0.42445099353790283, 'Day14': 0.47672098875045776, 'Week6': 0.28206300735473633} fold 4.3814983 peak 4\nk 15 union means {'Sham': 0.10870099812746048, 'Hour4': 0.12941999733448029, 'Hour12': 0.1247510015964508, 'Day2': 0.4238010048866272, 'Day14': 0.4765689969062805, 'Week6': 0.281825989484787} fold 4.38422 peak 4\nk 20 union means {'Sham': 0.10843700170516968, 'Hour4': 0.12849800288677216, 'Hour12': 0.12437299638986588, 'Day2': 0.42291000485420227, 'Day14': 0.4771159887313843, 'Week6': 0.28108999133110046} fold 4.399925 peak 4\nk 30 union means {'Sham': 0.10829400271177292, 'Hour4': 0.12795400619506836, 'Hour12': 0.12445099651813507, 'Day2': 0.4233750104904175, 'Day14': 0.4763689935207367, 'Week6': 0.27991798520088196} fold 4.398832 peak 4\nopp_zero k10 {'Sham': 0.006810000166296959, 'Hour4': 0.009944000281393528, 'Hour12': 0.008497999981045723, 'Day2': 0.054708000272512436, 'Day14': 0.1229730024933815, 'Week6': 0.04446300119161606} fold 18.058271 peak 4\nopp_targetonly k10 {'Sham': 0.06242800131440163, 'Hour4': 0.07683499902486801, 'Hour12': 0.06761399656534195, 'Day2': 0.12872199714183807, 'Day14': 0.25766700506210327, 'Week6': 0.15977700054645538} fold 4.1274223 peak 4\n\n B_specific min_genes 3 fib% 0.12124 imm% 0.0349 target% 0.14105 overlap% 0.01509\nk 6 union means {'Sham': 0.038683999329805374, 'Hour4': 0.04347600042819977, 'Hour12': 0.047825999557971954, 'Day2': 0.23975299298763275, 'Day14': 0.2853969931602478, 'Week6': 0.15635399520397186} fold 7.377629 peak 4\nk 10 union means {'Sham': 0.038314998149871826, 'Hour4': 0.043313998728990555, 'Hour12': 0.04771900177001953, 'Day2': 0.23915599286556244, 'Day14': 0.28534600138664246, 'Week6': 0.15484000742435455} fold 7.4474545 peak 4\nk 15 union means {'Sham': 0.0384100005030632, 'Hour4': 0.043772000819444656, 'Hour12': 0.04775800183415413, 'Day2': 0.23818999528884888, 'Day14': 0.28540000319480896, 'Week6': 0.15491199493408203} fold 7.4303837 peak 4\nk 20 union means {'Sham': 0.03866700083017349, 'Hour4': 0.04329799860715866, 'Hour12': 0.04793599992990494, 'Day2': 0.23823900520801544, 'Day14': 0.2853190004825592, 'Week6': 0.15418699383735657} fold 7.378939 peak 4\nk 30 union means {'Sham': 0.038329001516103745, 'Hour4': 0.04316600039601326, 'Hour12': 0.04755600169301033, 'Day2': 0.23880399763584137, 'Day14': 0.2853820025920868, 'Week6': 0.15320900082588196} fold 7.445664 peak 4\nopp_zero k10 {'Sham': 0.0008290000259876251, 'Hour4': 0.0015670000575482845, 'Hour12': 0.0013680000556632876, 'Day2': 0.01707099936902523, 'Day14': 0.03793200105428696, 'Week6': 0.012575999833643436} fold 45.732418 peak 4\nopp_targetonly k10 {'Sham': 0.02132599987089634, 'Hour4': 0.03561199828982353, 'Hour12': 0.028186999261379242, 'Day2': 0.07122399657964706, 'Day14': 0.1324719935655594, 'Week6': 0.08259399980306625} fold 6.2117276 peak 4\n\n C_common min_genes 1 fib% 0.37323 imm% 0.46555 target% 0.62054 overlap% 0.21824\nk 6 union means {'Sham': 0.4363510012626648, 'Hour4': 0.5386430025100708, 'Hour12': 0.46257299184799194, 'Day2': 0.6987869739532471, 'Day14': 0.8572090268135071, 'Week6': 0.6690679788589478} fold 1.9644924 peak 4\nk 10 union means {'Sham': 0.43615400791168213, 'Hour4': 0.5380460023880005, 'Hour12': 0.4634450078010559, 'Day2': 0.6971020102500916, 'Day14': 0.8580800294876099, 'Week6': 0.6692299842834473} fold 1.9673797 peak 4\nk 15 union means {'Sham': 0.4357379972934723, 'Hour4': 0.5380399823188782, 'Hour12': 0.46281298995018005, 'Day2': 0.6970260143280029, 'Day14': 0.8584989905357361, 'Week6': 0.6688640117645264} fold 1.9702187 peak 4\nk 20 union means {'Sham': 0.43472200632095337, 'Hour4': 0.5374190211296082, 'Hour12': 0.46250098943710327, 'Day2': 0.6955339908599854, 'Day14': 0.858892023563385, 'Week6': 0.6683809757232666} fold 1.9757295 peak 4\nk 30 union means {'Sham': 0.43484601378440857, 'Hour4': 0.5373070240020752, 'Hour12': 0.4620459973812103, 'Day2': 0.6956549882888794, 'Day14': 0.8583210110664368, 'Week6': 0.6678199768066406} fold 1.9738518 peak 4\nopp_zero k10 {'Sham': 0.1020980030298233, 'Hour4': 0.1541309952735901, 'Hour12': 0.11250700056552887, 'Day2': 0.26085299253463745, 'Day14': 0.5695390105247498, 'Week6': 0.3058370053768158} fold 5.578356 peak 4\nopp_targetonly k10 {'Sham': 0.23421800136566162, 'Hour4': 0.2870360016822815, 'Hour12': 0.2430810034275055, 'Day2': 0.37383899092674255, 'Day14': 0.6634780168533325, 'Week6': 0.45928800106048584} fold 2.8327367 peak 4\n\n C_common min_genes 2 fib% 0.16151 imm% 0.15536 target% 0.26257 overlap% 0.0543\nk 6 union means {'Sham': 0.11490199714899063, 'Hour4': 0.14690199494361877, 'Hour12': 0.12519900500774384, 'Day2': 0.3686540126800537, 'Day14': 0.489082008600235, 'Week6': 0.28016000986099243} fold 4.256509 peak 4\nk 10 union means {'Sham': 0.11414899677038193, 'Hour4': 0.14660599827766418, 'Hour12': 0.12606100738048553, 'Day2': 0.3665179908275604, 'Day14': 0.4893780052661896, 'Week6': 0.2793770134449005} fold 4.287177 peak 4\nk 15 union means {'Sham': 0.11364000290632248, 'Hour4': 0.14736799895763397, 'Hour12': 0.12599299848079681, 'Day2': 0.3657110035419464, 'Day14': 0.48921099305152893, 'Week6': 0.2795180082321167} fold 4.3049045 peak 4\nk 20 union means {'Sham': 0.11358100175857544, 'Hour4': 0.14684399962425232, 'Hour12': 0.12600600719451904, 'Day2': 0.3652609884738922, 'Day14': 0.48893898725509644, 'Week6': 0.2788049876689911} fold 4.304751 peak 4\nk 30 union means {'Sham': 0.11383800208568573, 'Hour4': 0.1465580016374588, 'Hour12': 0.12552499771118164, 'Day2': 0.36550500988960266, 'Day14': 0.48811599612236023, 'Week6': 0.2778710126876831} fold 4.287812 peak 4\nopp_zero k10 {'Sham': 0.007211000192910433, 'Hour4': 0.010919000022113323, 'Hour12': 0.007716000080108643, 'Day2': 0.054398998618125916, 'Day14': 0.1799519956111908, 'Week6': 0.05671900138258934} fold 24.956732 peak 4\nopp_targetonly k10 {'Sham': 0.0628490000963211, 'Hour4': 0.07426799833774567, 'Hour12': 0.06077900156378746, 'Day2': 0.14801199734210968, 'Day14': 0.3672569990158081, 'Week6': 0.2055319994688034} fold 5.8434486 peak 4\n\n C_common min_genes 3 fib% 0.0469 imm% 0.05869 target% 0.09562 overlap% 0.00997\nk 6 union means {'Sham': 0.02789199911057949, 'Hour4': 0.033546000719070435, 'Hour12': 0.04159500077366829, 'Day2': 0.14412499964237213, 'Day14': 0.20882900059223175, 'Week6': 0.09371700137853622} fold 7.4870615 peak 4\nk 10 union means {'Sham': 0.027287999168038368, 'Hour4': 0.03325900062918663, 'Hour12': 0.041850000619888306, 'Day2': 0.14412100613117218, 'Day14': 0.2096100002527237, 'Week6': 0.09350500255823135} fold 7.6814027 peak 4\nk 15 union means {'Sham': 0.02717900089919567, 'Hour4': 0.033966001123189926, 'Hour12': 0.04130600020289421, 'Day2': 0.14406999945640564, 'Day14': 0.20944300293922424, 'Week6': 0.0936330035328865} fold 7.7061267 peak 4\nk 20 union means {'Sham': 0.027340000495314598, 'Hour4': 0.03380100056529045, 'Hour12': 0.041113000363111496, 'Day2': 0.14401400089263916, 'Day14': 0.20915399491786957, 'Week6': 0.09287600219249725} fold 7.650036 peak 4\nk 30 union means {'Sham': 0.02741299942135811, 'Hour4': 0.033720001578330994, 'Hour12': 0.040846001356840134, 'Day2': 0.1446239948272705, 'Day14': 0.20892000198364258, 'Week6': 0.09237699955701828} fold 7.6210923 peak 4\nopp_zero k10 {'Sham': 0.0002610000083222985, 'Hour4': 0.00039599998854100704, 'Hour12': 0.0005869999877177179, 'Day2': 0.011370000429451466, 'Day14': 0.032444000244140625, 'Week6': 0.006492000073194504} fold 124.124725 peak 4\nopp_targetonly k10 {'Sham': 0.009398000314831734, 'Hour4': 0.011660000309348106, 'Hour12': 0.013918000273406506, 'Day2': 0.07829499989748001, 'Day14': 0.15462499856948853, 'Week6': 0.07087499648332596} fold 16.452097 peak 4\n\n D_broad min_genes 1 fib% 0.6937 imm% 0.56269 target% 0.8179 overlap% 0.43849\nk 6 union means {'Sham': 0.6272040009498596, 'Hour4': 0.7971280217170715, 'Hour12': 0.7817010283470154, 'Day2': 0.9006220102310181, 'Day14': 0.9299759864807129, 'Week6': 0.8361799716949463} fold 1.4827327 peak 4\nk 10 union means {'Sham': 0.6267930269241333, 'Hour4': 0.7970880270004272, 'Hour12': 0.7812820076942444, 'Day2': 0.8992660045623779, 'Day14': 0.9301580190658569, 'Week6': 0.8357790112495422} fold 1.4839953 peak 4\nk 15 union means {'Sham': 0.6263189911842346, 'Hour4': 0.7968760132789612, 'Hour12': 0.7819370031356812, 'Day2': 0.8998630046844482, 'Day14': 0.9303230047225952, 'Week6': 0.8362510204315186} fold 1.4853817 peak 4\nk 20 union means {'Sham': 0.6258310079574585, 'Hour4': 0.7967299818992615, 'Hour12': 0.7814450263977051, 'Day2': 0.8995689749717712, 'Day14': 0.9307969808578491, 'Week6': 0.8358110189437866} fold 1.487298 peak 4\nk 30 union means {'Sham': 0.625773012638092, 'Hour4': 0.7963950037956238, 'Hour12': 0.7813289761543274, 'Day2': 0.8996779918670654, 'Day14': 0.930683970451355, 'Week6': 0.8355749845504761} fold 1.4872552 peak 4\nopp_zero k10 {'Sham': 0.2616890072822571, 'Hour4': 0.4693869948387146, 'Hour12': 0.4303570091724396, 'Day2': 0.5098410248756409, 'Day14': 0.7588120102882385, 'Week6': 0.5532749891281128} fold 2.899671 peak 4\nopp_targetonly k10 {'Sham': 0.41781100630760193, 'Hour4': 0.5897300243377686, 'Hour12': 0.5514919757843018, 'Day2': 0.5664709806442261, 'Day14': 0.8155980110168457, 'Week6': 0.6634550094604492} fold 1.9520732 peak 4\n\n D_broad min_genes 2 fib% 0.46887 imm% 0.2515 target% 0.55033 overlap% 0.17004\nk 6 union means {'Sham': 0.29268598556518555, 'Hour4': 0.47663700580596924, 'Hour12': 0.4300900101661682, 'Day2': 0.7343630194664001, 'Day14': 0.7436140179634094, 'Week6': 0.5709260106086731} fold 2.5406542 peak 4\nk 10 union means {'Sham': 0.29019299149513245, 'Hour4': 0.47692200541496277, 'Hour12': 0.4307369887828827, 'Day2': 0.7318919897079468, 'Day14': 0.743153989315033, 'Week6': 0.5698390007019043} fold 2.5608962 peak 4\nk 15 union means {'Sham': 0.2892029881477356, 'Hour4': 0.4776670038700104, 'Hour12': 0.43005600571632385, 'Day2': 0.7322739958763123, 'Day14': 0.7429280281066895, 'Week6': 0.5697280168533325} fold 2.5688782 peak 4\nk 20 union means {'Sham': 0.2886910140514374, 'Hour4': 0.47746899724006653, 'Hour12': 0.42974498867988586, 'Day2': 0.7312560081481934, 'Day14': 0.7434239983558655, 'Week6': 0.5695469975471497} fold 2.5751545 peak 4\nk 30 union means {'Sham': 0.2889760136604309, 'Hour4': 0.47744500637054443, 'Hour12': 0.4291970133781433, 'Day2': 0.7322329878807068, 'Day14': 0.7429730296134949, 'Week6': 0.568988025188446} fold 2.5710561 peak 4\nopp_zero k10 {'Sham': 0.049295999109745026, 'Hour4': 0.12823499739170074, 'Hour12': 0.10518299788236618, 'Day2': 0.20000599324703217, 'Day14': 0.4150319993495941, 'Week6': 0.2096789926290512} fold 8.419172 peak 4\nopp_targetonly k10 {'Sham': 0.16992999613285065, 'Hour4': 0.2684360146522522, 'Hour12': 0.24498499929904938, 'Day2': 0.27279600501060486, 'Day14': 0.5585740208625793, 'Week6': 0.3701080083847046} fold 3.2870736 peak 4\n\n D_broad min_genes 3 fib% 0.32093 imm% 0.11199 target% 0.36155 overlap% 0.07137\nk 6 union means {'Sham': 0.14387400448322296, 'Hour4': 0.2566800117492676, 'Hour12': 0.2120790034532547, 'Day2': 0.5680630207061768, 'Day14': 0.5568900108337402, 'Week6': 0.37936899065971375} fold 3.8706682 peak 3\nk 10 union means {'Sham': 0.1424199938774109, 'Hour4': 0.2556599974632263, 'Hour12': 0.21242700517177582, 'Day2': 0.5651419758796692, 'Day14': 0.5568680167198181, 'Week6': 0.37740200757980347} fold 3.9100397 peak 3\nk 15 union means {'Sham': 0.1422410011291504, 'Hour4': 0.25582700967788696, 'Hour12': 0.21242700517177582, 'Day2': 0.5647370219230652, 'Day14': 0.5568869709968567, 'Week6': 0.37749800086021423} fold 3.9150884 peak 3\nk 20 union means {'Sham': 0.14213399589061737, 'Hour4': 0.2548210024833679, 'Hour12': 0.21184700727462769, 'Day2': 0.5639470219612122, 'Day14': 0.557204008102417, 'Week6': 0.37730398774147034} fold 3.9202685 peak 3\nk 30 union means {'Sham': 0.14182999730110168, 'Hour4': 0.2543410062789917, 'Hour12': 0.21163199841976166, 'Day2': 0.564670979976654, 'Day14': 0.5566620230674744, 'Week6': 0.37639299035072327} fold 3.9248586 peak 3\nopp_zero k10 {'Sham': 0.010862999595701694, 'Hour4': 0.027865000069141388, 'Hour12': 0.022778000682592392, 'Day2': 0.07737100124359131, 'Day14': 0.197612002491951, 'Week6': 0.07533399760723114} fold 18.191414 peak 4\nopp_targetonly k10 {'Sham': 0.07572899758815765, 'Hour4': 0.1088550016283989, 'Hour12': 0.10731899738311768, 'Day2': 0.1365640014410019, 'Day14': 0.3542119860649109, 'Week6': 0.20125900208950043} fold 4.677365 peak 4\n\n E_verycore min_genes 1 fib% 0.41437 imm% 0.2434 target% 0.52275 overlap% 0.13502\nk 6 union means {'Sham': 0.3481909930706024, 'Hour4': 0.41470399498939514, 'Hour12': 0.3455289900302887, 'Day2': 0.692264974117279, 'Day14': 0.7317219972610474, 'Week6': 0.5538539886474609} fold 2.1014957 peak 4\nk 10 union means {'Sham': 0.3483029901981354, 'Hour4': 0.413783997297287, 'Hour12': 0.34788501262664795, 'Day2': 0.6897029876708984, 'Day14': 0.7318990230560303, 'Week6': 0.5539069771766663} fold 2.1013284 peak 4\nk 15 union means {'Sham': 0.3472039997577667, 'Hour4': 0.41312700510025024, 'Hour12': 0.34709998965263367, 'Day2': 0.690451979637146, 'Day14': 0.7312570214271545, 'Week6': 0.5540149807929993} fold 2.1061323 peak 4\nk 20 union means {'Sham': 0.347104012966156, 'Hour4': 0.41232699155807495, 'Hour12': 0.3460890054702759, 'Day2': 0.6886579990386963, 'Day14': 0.731423020362854, 'Week6': 0.5529379844665527} fold 2.1072164 peak 4\nk 30 union means {'Sham': 0.3466159999370575, 'Hour4': 0.4118120074272156, 'Hour12': 0.34525901079177856, 'Day2': 0.6891120076179504, 'Day14': 0.7306569814682007, 'Week6': 0.5520700216293335} fold 2.1079714 peak 4\nopp_zero k10 {'Sham': 0.06822700053453445, 'Hour4': 0.09425400197505951, 'Hour12': 0.06556300073862076, 'Day2': 0.18721799552440643, 'Day14': 0.3510819971561432, 'Week6': 0.1905979961156845} fold 5.145802 peak 4\nopp_targetonly k10 {'Sham': 0.19624100625514984, 'Hour4': 0.22860099375247955, 'Hour12': 0.18971799314022064, 'Day2': 0.2712090015411377, 'Day14': 0.4798319935798645, 'Week6': 0.34669598937034607} fold 2.4451163 peak 4\n\n E_verycore min_genes 2 fib% 0.20942 imm% 0.06652 target% 0.2409 overlap% 0.03504\nk 6 union means {'Sham': 0.09328299760818481, 'Hour4': 0.10509300231933594, 'Hour12': 0.10251999646425247, 'Day2': 0.39178600907325745, 'Day14': 0.4482719898223877, 'Week6': 0.2572599947452545} fold 4.8055015 peak 4\nk 10 union means {'Sham': 0.09242399781942368, 'Hour4': 0.1043500006198883, 'Hour12': 0.1032790020108223, 'Day2': 0.3907119929790497, 'Day14': 0.4485990107059479, 'Week6': 0.2556860148906708} fold 4.853729 peak 4\nk 15 union means {'Sham': 0.09256800264120102, 'Hour4': 0.10420399904251099, 'Hour12': 0.10228999704122543, 'Day2': 0.3902899920940399, 'Day14': 0.4485189914703369, 'Week6': 0.2556520104408264} fold 4.8453145 peak 4\nk 20 union means {'Sham': 0.09233999997377396, 'Hour4': 0.10331500321626663, 'Hour12': 0.10204499959945679, 'Day2': 0.3893490135669708, 'Day14': 0.4489319920539856, 'Week6': 0.254952996969223} fold 4.8617387 peak 4\nk 30 union means {'Sham': 0.09242399781942368, 'Hour4': 0.10275000333786011, 'Hour12': 0.1020440012216568, 'Day2': 0.3898639976978302, 'Day14': 0.4484170079231262, 'Week6': 0.2535969913005829} fold 4.8517632 peak 4\nopp_zero k10 {'Sham': 0.0043390002101659775, 'Hour4': 0.006018000189214945, 'Hour12': 0.0056779999285936356, 'Day2': 0.04027500003576279, 'Day14': 0.1005920022726059, 'Week6': 0.03374100103974342} fold 23.18389 peak 4\nopp_targetonly k10 {'Sham': 0.04666399955749512, 'Hour4': 0.057746000587940216, 'Hour12': 0.05503999814391136, 'Day2': 0.1028899997472763, 'Day14': 0.2237289994955063, 'Week6': 0.13376900553703308} fold 4.794452 peak 4\n\n E_verycore min_genes 3 fib% 0.10537 imm% 0.02848 target% 0.12236 overlap% 0.01149\nk 6 union means {'Sham': 0.033282000571489334, 'Hour4': 0.03491799905896187, 'Hour12': 0.037553999572992325, 'Day2': 0.20006099343299866, 'Day14': 0.256164014339447, 'Week6': 0.13950100541114807} fold 7.696709 peak 4\nk 10 union means {'Sham': 0.033094000071287155, 'Hour4': 0.03474700078368187, 'Hour12': 0.03776700049638748, 'Day2': 0.1998409926891327, 'Day14': 0.25670701265335083, 'Week6': 0.1376579999923706} fold 7.75689 peak 4\nk 15 union means {'Sham': 0.033075001090765, 'Hour4': 0.03512699902057648, 'Hour12': 0.03790700063109398, 'Day2': 0.1988379955291748, 'Day14': 0.2562530040740967, 'Week6': 0.13799600303173065} fold 7.7475176 peak 4\nk 20 union means {'Sham': 0.033316999673843384, 'Hour4': 0.03464899957180023, 'Hour12': 0.03819800168275833, 'Day2': 0.19871599972248077, 'Day14': 0.25637900829315186, 'Week6': 0.13734300434589386} fold 7.695113 peak 4\nk 30 union means {'Sham': 0.033107999712228775, 'Hour4': 0.034550998359918594, 'Hour12': 0.03784999996423721, 'Day2': 0.19913999736309052, 'Day14': 0.2562139928340912, 'Week6': 0.13637299835681915} fold 7.73873 peak 4\nopp_zero k10 {'Sham': 0.0006060000159777701, 'Hour4': 0.001133000012487173, 'Hour12': 0.0008769999840296805, 'Day2': 0.011622999794781208, 'Day14': 0.029604999348521233, 'Week6': 0.0089910002425313} fold 48.820377 peak 4\nopp_targetonly k10 {'Sham': 0.018050000071525574, 'Hour4': 0.032193999737501144, 'Hour12': 0.022690000012516975, 'Day2': 0.058028001338243484, 'Day14': 0.11507800221443176, 'Week6': 0.06633800268173218} fold 6.375577 peak 4\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_12",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad, numpy as np, pandas as pd\nfrom sklearn.neighbors import NearestNeighbors\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p)\nraw=adata.raw.X.tocsr(); genes=list(adata.var_names); gi={g:i for i,g in enumerate(genes)}\nobs=adata.obs; coord=np.asarray(adata.obsm['spatial']); order=['Sham','Hour4','Hour12','Day2','Day14','Week6']\nvariants={\n'F8I9':['Col1a1 Col1a2 Col5a2 Col6a1 Fbln1 Mmp2 Mrc2 Pi16','Cd53 Csf1r Fyb Gimap5 Grap Lair1 Ccr1 Ccr4 Ccrl2'],\n'F9I9':['Col1a1 Col1a2 Col5a2 Col6a1 Fbln1 Mmp2 Mrc2 Pi16 Smoc2','Cd53 Csf1r Fyb Gimap5 Grap Lair1 Ccr1 Ccr4 Ccrl2'],\n'F10I9':['Col1a1 Col1a2 Col5a2 Col6a1 Fbln1 Mmp2 Mrc2 Pi16 Sfrp1 Smoc2','Cd53 Csf1r Fyb Gimap5 Grap Lair1 Ccr1 Ccr4 Ccrl2'],\n'F8I10_cd74':['Col1a1 Col1a2 Col5a2 Col6a1 Fbln1 Mmp2 Mrc2 Pi16','Cd53 Csf1r Fyb Gimap5 Grap Lair1 Ccr1 Ccr4 Ccrl2 Cd74'],\n'F9I10_cd74':['Col1a1 Col1a2 Col5a2 Col6a1 Fbln1 Mmp2 Mrc2 Pi16 Smoc2','Cd53 Csf1r Fyb Gimap5 Grap Lair1 Ccr1 Ccr4 Ccrl2 Cd74'],\n'F8I12_Aminus':['Col1a1 Col1a2 Col5a2 Col6a1 Fbln1 Mmp2 Mrc2 Pi16','Cd53 Csf1r Fyb Gimap5 Grap Lair1 Ccr1 Ccr4 Ccrl2 Cd74 Bst1 Runx1'],\n}\ndef call(s,mg):\n idx=[gi[g] for g in s.split() if g in gi]; M=raw[:,idx]; return np.asarray((M>0).sum(axis=1)).ravel()>=mg\n# precompute knn ind once\nk=10; neighs=[]; ix_all=[]\nfor sec, inds in obs.groupby('ident', observed=True).indices.items():\n ix=np.asarray(inds); idx=NearestNeighbors(n_neighbors=k+1,algorithm='kd_tree').fit(coord[ix]).kneighbors(return_distance=False)\n # remove self robust\n neigh=np.empty((len(ix),k),dtype=np.int64)\n for r,row in enumerate(idx):\n  rr=row[row\"'!=r][:k]; neigh[r]=ix[rr]\n neighs.append(neigh); ix_all.append(ix)\ndef score(tar):\n out=np.zeros(adata.n_obs,dtype=float)\n for ix,neigh in zip(ix_all,neighs): out[ix]=tar[neigh].mean(axis=1)\n return pd.Series(out).groupby(obs.time.astype(str).values).mean().loc[order]\nfor name,(fs,is_) in variants.items():\n for mg in [1,2,3]:\n  fib=call(fs,mg); imm=call(is_,mg); target=fib|imm\n  means=score(target)\n  print(name,'\"'mg',mg,'fib',round(fib.mean(),4),'imm',round(imm.mean(),4),'target',round(target.mean(),4), 'means', [round(x,6) for x in means.values], 'fold', means['Day14']/means['Sham'], 'peak', int(np.argmax(means.values)))\nPY\"",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_12",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad, numpy as np, pandas as pd\nfrom sklearn.neighbors import NearestNeighbors\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p)\nraw=adata.raw.X.tocsr(); genes=list(adata.var_names); gi={g:i for i,g in enumerate(genes)}\nobs=adata.obs; coord=np.asarray(adata.obsm['spatial']); order=['Sham','Hour4','Hour12','Day2','Day14','Week6']\nvariants={\n'F8I9':['Col1a1 Col1a2 Col5a2 Col6a1 Fbln1 Mmp2 Mrc2 Pi16','Cd53 Csf1r Fyb Gimap5 Grap Lair1 Ccr1 Ccr4 Ccrl2'],\n'F9I9':['Col1a1 Col1a2 Col5a2 Col6a1 Fbln1 Mmp2 Mrc2 Pi16 Smoc2','Cd53 Csf1r Fyb Gimap5 Grap Lair1 Ccr1 Ccr4 Ccrl2'],\n'F10I9':['Col1a1 Col1a2 Col5a2 Col6a1 Fbln1 Mmp2 Mrc2 Pi16 Sfrp1 Smoc2','Cd53 Csf1r Fyb Gimap5 Grap Lair1 Ccr1 Ccr4 Ccrl2'],\n'F8I10_cd74':['Col1a1 Col1a2 Col5a2 Col6a1 Fbln1 Mmp2 Mrc2 Pi16','Cd53 Csf1r Fyb Gimap5 Grap Lair1 Ccr1 Ccr4 Ccrl2 Cd74'],\n'F9I10_cd74':['Col1a1 Col1a2 Col5a2 Col6a1 Fbln1 Mmp2 Mrc2 Pi16 Smoc2','Cd53 Csf1r Fyb Gimap5 Grap Lair1 Ccr1 Ccr4 Ccrl2 Cd74'],\n'F8I12_Aminus':['Col1a1 Col1a2 Col5a2 Col6a1 Fbln1 Mmp2 Mrc2 Pi16','Cd53 Csf1r Fyb Gimap5 Grap Lair1 Ccr1 Ccr4 Ccrl2 Cd74 Bst1 Runx1'],\n}\ndef call(s,mg):\n idx=[gi[g] for g in s.split() if g in gi]; M=raw[:,idx]; return np.asarray((M>0).sum(axis=1)).ravel()>=mg\n# precompute knn ind once\nk=10; neighs=[]; ix_all=[]\nfor sec, inds in obs.groupby('ident', observed=True).indices.items():\n ix=np.asarray(inds); idx=NearestNeighbors(n_neighbors=k+1,algorithm='kd_tree').fit(coord[ix]).kneighbors(return_distance=False)\n # remove self robust\n neigh=np.empty((len(ix),k),dtype=np.int64)\n for r,row in enumerate(idx):\n  rr=row[row\"'!=r][:k]; neigh[r]=ix[rr]\n neighs.append(neigh); ix_all.append(ix)\ndef score(tar):\n out=np.zeros(adata.n_obs,dtype=float)\n for ix,neigh in zip(ix_all,neighs): out[ix]=tar[neigh].mean(axis=1)\n return pd.Series(out).groupby(obs.time.astype(str).values).mean().loc[order]\nfor name,(fs,is_) in variants.items():\n for mg in [1,2,3]:\n  fib=call(fs,mg); imm=call(is_,mg); target=fib|imm\n  means=score(target)\n  print(name,'\"'mg',mg,'fib',round(fib.mean(),4),'imm',round(imm.mean(),4),'target',round(target.mean(),4), 'means', [round(x,6) for x in means.values], 'fold', means['Day14']/means['Sham'], 'peak', int(np.argmax(means.values)))\nPY\"",
+      "aggregated_output": "F8I9 mg 1 fib 0.4422 imm 0.2886 target 0.5654 means [0.400432, 0.468824, 0.409486, 0.719737, 0.756006, 0.593188] fold 1.8879753121267482 peak 4\nF8I9 mg 2 fib 0.2265 imm 0.0847 target 0.267 means [0.109654, 0.130011, 0.126373, 0.425338, 0.477833, 0.282521] fold 4.357663126866732 peak 4\nF8I9 mg 3 fib 0.122 imm 0.0349 target 0.1417 means [0.039381, 0.043485, 0.048102, 0.24011, 0.286281, 0.155631] fold 7.269503653112306 peak 4\nF9I9 mg 1 fib 0.4552 imm 0.2886 target 0.5738 means [0.405973, 0.478226, 0.419292, 0.723406, 0.762963, 0.606449] fold 1.8793423692384976 peak 4\nF9I9 mg 2 fib 0.2386 imm 0.0847 target 0.2773 means [0.114156, 0.138312, 0.131809, 0.432216, 0.493304, 0.3007] fold 4.321308126487161 peak 4\nF9I9 mg 3 fib 0.133 imm 0.0349 target 0.1516 means [0.042692, 0.047581, 0.050463, 0.248737, 0.306584, 0.17191] fold 7.181331989585957 peak 4\nF10I9 mg 1 fib 0.5063 imm 0.2886 target 0.6131 means [0.458423, 0.518767, 0.452166, 0.7417, 0.797169, 0.664115] fold 1.7389370931250885 peak 4\nF10I9 mg 2 fib 0.2753 imm 0.0847 target 0.311 means [0.145257, 0.165253, 0.147305, 0.458961, 0.539873, 0.35102] fold 3.7166798916638975 peak 4\nF10I9 mg 3 fib 0.1553 imm 0.0349 target 0.1726 means [0.05321, 0.058832, 0.054967, 0.273256, 0.348326, 0.200106] fold 6.54628584279561 peak 4\nF8I10_cd74 mg 1 fib 0.4422 imm 0.4922 target 0.6662 means [0.485976, 0.590737, 0.525104, 0.743381, 0.882054, 0.714904] fold 1.815015519258659 peak 4\nF8I10_cd74 mg 2 fib 0.2265 imm 0.1805 target 0.3272 means [0.160047, 0.201931, 0.17725, 0.439101, 0.56918, 0.357495] fold 3.556323334531775 peak 4\nF8I10_cd74 mg 3 fib 0.122 imm 0.0696 target 0.1646 means [0.057225, 0.062258, 0.066105, 0.247245, 0.330636, 0.182763] fold 5.777877518877655 peak 4\nF9I10_cd74 mg 1 fib 0.4552 imm 0.4922 target 0.6713 means [0.489419, 0.597759, 0.531821, 0.746744, 0.884624, 0.721696] fold 1.807495838959413 peak 4\nF9I10_cd74 mg 2 fib 0.2386 imm 0.1805 target 0.3355 means [0.163999, 0.208624, 0.181907, 0.445436, 0.579908, 0.372399] fold 3.5360344950236384 peak 4\nF9I10_cd74 mg 3 fib 0.133 imm 0.0696 target 0.1736 means [0.060277, 0.065962, 0.068408, 0.255634, 0.348732, 0.197713] fold 5.78545206091074 peak 4\nF8I12_Aminus mg 1 fib 0.4422 imm 0.5466 target 0.6963 means [0.506203, 0.623053, 0.603152, 0.779688, 0.889512, 0.727702] fold 1.7572220099234825 peak 4\nF8I12_Aminus mg 2 fib 0.2265 imm 0.2313 target 0.3619 means [0.176295, 0.238914, 0.243222, 0.473757, 0.599828, 0.38306] fold 3.402414365410275 peak 4\nF8I12_Aminus mg 3 fib 0.122 imm 0.0969 target 0.184 means [0.064606, 0.079632, 0.088727, 0.262109, 0.365855, 0.198761] fold 5.662874103890155 peak 4\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_13",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport h5py, json\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nwith h5py.File(p,'r') as f:\n    for key in ['obs','var','uns','raw','obsm']:\n        print(key, dict(f[key].attrs))\n    print('file attrs', dict(f.attrs))\nPY\"",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_13",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport h5py, json\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nwith h5py.File(p,'r') as f:\n    for key in ['obs','var','uns','raw','obsm']:\n        print(key, dict(f[key].attrs))\n    print('file attrs', dict(f.attrs))\nPY\"",
+      "aggregated_output": "obs {'_index': '_index', 'column-order': array(['x_centroid', 'y_centroid', 'n_genes', 'n_counts', 'ident',\n       'region', 'time'], dtype=object), 'encoding-type': 'dataframe', 'encoding-version': '0.2.0'}\nvar {'_index': '_index', 'column-order': array([], dtype=float64), 'encoding-type': 'dataframe', 'encoding-version': '0.2.0'}\nuns {'encoding-type': 'dict', 'encoding-version': '0.1.0'}\nraw {'encoding-type': 'raw', 'encoding-version': '0.1.0'}\nobsm {'encoding-type': 'dict', 'encoding-version': '0.1.0'}\nfile attrs {'encoding-type': 'anndata', 'encoding-version': '0.1.0'}\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_14",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad, numpy as np, pandas as pd\nfrom sklearn.neighbors import NearestNeighbors\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'; adata=ad.read_h5ad(p)\nraw=adata.raw.X.tocsr(); genes=list(adata.var_names); gi={g:i for i,g in enumerate(genes)}; obs=adata.obs; coord=adata.obsm['spatial']; order=['Sham','Hour4','Hour12','Day2','Day14','Week6']\ndef gt(g): return np.asarray(raw[:,gi[g]].todense()).ravel()>0\nvariants={\n'fib_col1a1or2_imm_cd53orcsf1r': (gt('Col1a1')|gt('Col1a2'), gt('Cd53')|gt('Csf1r')),\n'fib_col1a1and2_imm_cd53orcsf1r': (gt('Col1a1')&gt('Col1a2'), gt('Cd53')|gt('Csf1r')),\n'fib_col_any_imm_cd53csf1r_any': (gt('Col1a1')|gt('Col1a2')|gt('Col5a2')|gt('Col6a1'), gt('Cd53')|gt('Csf1r')),\n'fib_col_ng2_imm_cd53orcsf1r': (np.asarray((raw[:,[gi[g] for g in ['Col1a1','Col1a2','Col5a2','Col6a1']]>0).sum(axis=1)).ravel()>=2, gt('Cd53')|gt('Csf1r')),\n'fib_col_ng2_imm_core_ng2': (np.asarray((raw[:,[gi[g] for g in ['Col1a1','Col1a2','Col5a2','Col6a1']]>0).sum(axis=1)).ravel()>=2, np.asarray((raw[:,[gi[g] for g in ['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2']]>0).sum(axis=1)).ravel()>=2),\n}\nk=10; neighbors=[]; ixes=[]\nfor _,inds in obs.groupby('ident', observed=True).indices.items():\n ix=np.array(inds); loc=NearestNeighbors(n_neighbors=k+1).fit(coord[ix]).kneighbors(return_distance=False); nb=np.empty((len(ix),k),int)\n for r,row in enumerate(loc): nb[r]=ix[row[row\"'!=r][:k]]\n ixes.append(ix); neighbors.append(nb)\ndef means(target):\n s=np.zeros(adata.n_obs,float)\n for ix,nb in zip(ixes,neighbors): s[ix]=target[nb].mean(1)\n return pd.Series(s).groupby(obs.time.astype(str).values).mean().loc[order]\nfor n,(f,i) in variants.items():\n m=means(f|i); print(n,'\"'fib',f.mean(),'imm',i.mean(),'target',(f|i).mean(),[round(x,6) for x in m.values], m['Day14']/m['Sham'], np.argmax(m.values))\nPY\"",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_14",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad, numpy as np, pandas as pd\nfrom sklearn.neighbors import NearestNeighbors\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'; adata=ad.read_h5ad(p)\nraw=adata.raw.X.tocsr(); genes=list(adata.var_names); gi={g:i for i,g in enumerate(genes)}; obs=adata.obs; coord=adata.obsm['spatial']; order=['Sham','Hour4','Hour12','Day2','Day14','Week6']\ndef gt(g): return np.asarray(raw[:,gi[g]].todense()).ravel()>0\nvariants={\n'fib_col1a1or2_imm_cd53orcsf1r': (gt('Col1a1')|gt('Col1a2'), gt('Cd53')|gt('Csf1r')),\n'fib_col1a1and2_imm_cd53orcsf1r': (gt('Col1a1')&gt('Col1a2'), gt('Cd53')|gt('Csf1r')),\n'fib_col_any_imm_cd53csf1r_any': (gt('Col1a1')|gt('Col1a2')|gt('Col5a2')|gt('Col6a1'), gt('Cd53')|gt('Csf1r')),\n'fib_col_ng2_imm_cd53orcsf1r': (np.asarray((raw[:,[gi[g] for g in ['Col1a1','Col1a2','Col5a2','Col6a1']]>0).sum(axis=1)).ravel()>=2, gt('Cd53')|gt('Csf1r')),\n'fib_col_ng2_imm_core_ng2': (np.asarray((raw[:,[gi[g] for g in ['Col1a1','Col1a2','Col5a2','Col6a1']]>0).sum(axis=1)).ravel()>=2, np.asarray((raw[:,[gi[g] for g in ['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2']]>0).sum(axis=1)).ravel()>=2),\n}\nk=10; neighbors=[]; ixes=[]\nfor _,inds in obs.groupby('ident', observed=True).indices.items():\n ix=np.array(inds); loc=NearestNeighbors(n_neighbors=k+1).fit(coord[ix]).kneighbors(return_distance=False); nb=np.empty((len(ix),k),int)\n for r,row in enumerate(loc): nb[r]=ix[row[row\"'!=r][:k]]\n ixes.append(ix); neighbors.append(nb)\ndef means(target):\n s=np.zeros(adata.n_obs,float)\n for ix,nb in zip(ixes,neighbors): s[ix]=target[nb].mean(1)\n return pd.Series(s).groupby(obs.time.astype(str).values).mean().loc[order]\nfor n,(f,i) in variants.items():\n m=means(f|i); print(n,'\"'fib',f.mean(),'imm',i.mean(),'target',(f|i).mean(),[round(x,6) for x in m.values], m['Day14']/m['Sham'], np.argmax(m.values))\nPY\"",
+      "aggregated_output": "  File \"<stdin>\", line 10\n    'fib_col_ng2_imm_cd53orcsf1r': (np.asarray((raw[:,[gi[g] for g in ['Col1a1','Col1a2','Col5a2','Col6a1']]>0).sum(axis=1)).ravel()>=2, gt('Cd53')|gt('Csf1r')),\n                                                                                                              ^\nSyntaxError: closing parenthesis ')' does not match opening parenthesis '['\n",
+      "exit_code": 1,
+      "status": "failed"
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_15",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad, numpy as np, pandas as pd\nfrom sklearn.neighbors import NearestNeighbors\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p); raw=adata.raw.X.tocsr(); genes=list(adata.raw.var_names); gi={g:i for i,g in enumerate(genes)}; obs=adata.obs; coord=np.asarray(adata.obsm['spatial']); order=['Sham','Hour4','Hour12','Day2','Day14','Week6']\nfib_genes=['Col1a1','Col1a2','Col5a2','Col6a1','Fbln1','Mmp2','Mrc2','Pi16']\nimm_genes=['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2']\ndef positive(gs,min_genes=2):\n    idx=[gi[g] for g in gs if g in gi]\n    return np.asarray((raw[:,idx]>0).sum(axis=1)).ravel() >= min_genes\nfib=positive(fib_genes); imm=positive(imm_genes); target=fib|imm\nprint('fib, immune, target, overlap', fib.mean(), imm.mean(), target.mean(), (fib&imm).mean())\nfor groupcol in ['ident','time','region']:\n k=10; s=np.zeros(adata.n_obs,float)\n for _,inds in obs.groupby(groupcol, observed=True).indices.items():\n  ix=np.asarray(inds); nbr=NearestNeighbors(n_neighbors=min(k+1,len(ix)), algorithm='kd_tree').fit(coord[ix]).kneighbors(return_distance=False)\n  for r,row in enumerate(nbr):\n   neigh=row[row\"'!=r][:k]\n   s[ix[r]]=target[ix[neigh]].mean()\n m=pd.Series(s).groupby(obs.time.astype(str).values).mean().loc[order]\n print(groupcol, [repr(float(x)) for x in m.values], '\"'fold', repr(float(m['Day14']/m['Sham'])), 'peak', int(np.argmax(m.values)))\nPY\"",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_15",
+      "type": "command_execution",
+      "command": "/bin/bash -lc \"python - <<'PY'\nimport anndata as ad, numpy as np, pandas as pd\nfrom sklearn.neighbors import NearestNeighbors\np='/workspace/data/182675935_spatial_mouse_kidney_iri_100k_nocn_no_celltype.h5ad'\nadata=ad.read_h5ad(p); raw=adata.raw.X.tocsr(); genes=list(adata.raw.var_names); gi={g:i for i,g in enumerate(genes)}; obs=adata.obs; coord=np.asarray(adata.obsm['spatial']); order=['Sham','Hour4','Hour12','Day2','Day14','Week6']\nfib_genes=['Col1a1','Col1a2','Col5a2','Col6a1','Fbln1','Mmp2','Mrc2','Pi16']\nimm_genes=['Cd53','Csf1r','Fyb','Gimap5','Grap','Lair1','Ccr1','Ccr4','Ccrl2']\ndef positive(gs,min_genes=2):\n    idx=[gi[g] for g in gs if g in gi]\n    return np.asarray((raw[:,idx]>0).sum(axis=1)).ravel() >= min_genes\nfib=positive(fib_genes); imm=positive(imm_genes); target=fib|imm\nprint('fib, immune, target, overlap', fib.mean(), imm.mean(), target.mean(), (fib&imm).mean())\nfor groupcol in ['ident','time','region']:\n k=10; s=np.zeros(adata.n_obs,float)\n for _,inds in obs.groupby(groupcol, observed=True).indices.items():\n  ix=np.asarray(inds); nbr=NearestNeighbors(n_neighbors=min(k+1,len(ix)), algorithm='kd_tree').fit(coord[ix]).kneighbors(return_distance=False)\n  for r,row in enumerate(nbr):\n   neigh=row[row\"'!=r][:k]\n   s[ix[r]]=target[ix[neigh]].mean()\n m=pd.Series(s).groupby(obs.time.astype(str).values).mean().loc[order]\n print(groupcol, [repr(float(x)) for x in m.values], '\"'fold', repr(float(m['Day14']/m['Sham'])), 'peak', int(np.argmax(m.values)))\nPY\"",
+      "aggregated_output": "fib, immune, target, overlap 0.22652 0.08474 0.26699 0.04427\nident ['0.10965358611556424', '0.13001139673293657', '0.1263732057416268', '0.4253378171812901', '0.47783338894450006', '0.2825212878520683'] fold 4.357663126866732 peak 4\ntime ['0.1102599846657838', '0.1304609345321008', '0.12629665071770335', '0.42605319474166925', '0.4777332888444', '0.2808787222250214'] fold 4.332789364087873 peak 4\nregion ['0.25856973583327525', '0.25270355831328356', '0.24896969696969695', '0.2806970345460104', '0.2929151373595818', '0.267672696125359'] fold 1.1328283892762003 peak 4\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_16",
+      "type": "agent_message",
+      "text": "I have a stable calculation now: kNN was computed inside each `ident` section, with `ShamL/ShamR`, `Day14L/Day14R`, etc. kept separate. I\u2019m writing the requested JSON result to `/workspace/eval_answer.json` and then I\u2019ll emit the completion signal."
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_17",
+      "type": "file_change",
+      "changes": [
+        {
+          "path": "/workspace/eval_answer.json",
+          "kind": "add"
+        }
+      ],
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_17",
+      "type": "file_change",
+      "changes": [
+        {
+          "path": "/workspace/eval_answer.json",
+          "kind": "add"
+        }
+      ],
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.started",
+    "item": {
+      "id": "item_18",
+      "type": "command_execution",
+      "command": "/bin/bash -lc 'cat /workspace/eval_answer.json && echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT'",
+      "aggregated_output": "",
+      "exit_code": null,
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_18",
+      "type": "command_execution",
+      "command": "/bin/bash -lc 'cat /workspace/eval_answer.json && echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT'",
+      "aggregated_output": "{\"mean_coloc_sham\": 0.10965358611556424, \"mean_coloc_day14\": 0.47783338894450006, \"fold_increase\": 4.357663126866732, \"peak_time_index\": 4}\nCOMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  },
+  {
+    "type": "item.completed",
+    "item": {
+      "id": "item_19",
+      "type": "agent_message",
+      "text": "<EVAL_ANSWER>\n{\"mean_coloc_sham\": 0.10965358611556424, \"mean_coloc_day14\": 0.47783338894450006, \"fold_increase\": 4.357663126866732, \"peak_time_index\": 4}\n</EVAL_ANSWER>"
+    }
+  },
+  {
+    "type": "turn.completed",
+    "usage": {
+      "input_tokens": 808496,
+      "cached_input_tokens": 412416,
+      "output_tokens": 14716,
+      "reasoning_output_tokens": 8116
+    }
+  }
+]
