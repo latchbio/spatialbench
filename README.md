@@ -7,7 +7,7 @@ SpatialBench is a benchmark of 159 verifiable problems derived from practical sp
 This revised version of the benchmark includes 159 problems across 5 platforms and 7 task categories.  We share results for the full benchmark and publicly release a representative sample covering all platform types and task categories along with the associated agent trajectories. We withhold releasing the full benchmark set publicly to avoid contamination.
 
 
-## Key Findings
+## Results From This Release
 | model_name                    | harness        |   Accuracy (%) |   Cost ($) |
 |:------------------------------|:---------------|---------------:|-----------:|
 | gpt-5.5                       | mini-swe-agent |          57.65 |     1.1207 |
@@ -32,6 +32,11 @@ This revised version of the benchmark includes 159 problems across 5 platforms a
 | gemini-2.5-pro                | mini-swe-agent |          28.93 |     0.1086 |
 
 Full results with 95% confidence intervals are in [`results/`](results/). Details on implementation methodology can be found in [Methods](METHODS.md)
+
+
+## Updated leaderboard
+
+For results from newer model-and-harness evaluations, see the [SpatialBench leaderboard](https://benchmarks.bio/spatial), part of the [benchmarks.bio](https://benchmarks.bio/) suite. 
 
 
 ## Benchmark Structure
@@ -71,6 +76,10 @@ Five grader families handle different answer types:
 | DistributionComparison | Cell type proportions |
 
 See [latch-eval-tools](https://github.com/latchbio/latch-eval-tools) for implementations and harness setups. 
+
+
+
+Current model-and-harness results are available on the [SpatialBench leaderboard](https://benchmarks.bio/spatial), part of the broader [benchmarks.bio](https://benchmarks.bio/) suite.
 
 ## Citation
 
