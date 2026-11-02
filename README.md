@@ -79,8 +79,6 @@ See [latch-eval-tools](https://github.com/latchbio/latch-eval-tools) for impleme
 
 
 
-Current model-and-harness results are available on the [SpatialBench leaderboard](https://benchmarks.bio/spatial), part of the broader [benchmarks.bio](https://benchmarks.bio/) suite.
-
 ## Citation
 
 ```bibtex
